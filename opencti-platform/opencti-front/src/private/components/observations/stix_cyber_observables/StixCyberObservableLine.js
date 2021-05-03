@@ -9,10 +9,11 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import { KeyboardArrowRight } from '@material-ui/icons';
 import { HexagonOutline } from 'mdi-material-ui';
-import { compose, pathOr, take } from 'ramda';
+import { compose, pathOr } from 'ramda';
+import Checkbox from '@material-ui/core/Checkbox';
 import inject18n from '../../../../components/i18n';
-import ItemMarking from '../../../../components/ItemMarking';
 import StixCoreObjectLabels from '../../common/stix_core_objects/StixCoreObjectLabels';
+import ItemMarkings from '../../../../components/ItemMarkings';
 
 const styles = (theme) => ({
   item: {
@@ -47,7 +48,15 @@ const styles = (theme) => ({
 class StixCyberObservableLineComponent extends Component {
   render() {
     const {
-      t, nsdt, classes, dataColumns, node, onLabelClick,
+      t,
+      nsdt,
+      classes,
+      dataColumns,
+      node,
+      onLabelClick,
+      onToggleEntity,
+      selectedElements,
+      selectAll,
     } = this.props;
     return (
       <ListItem
@@ -55,8 +64,21 @@ class StixCyberObservableLineComponent extends Component {
         divider={true}
         button={true}
         component={Link}
-        to={`/dashboard/observations/observables/${node.id}`}
+        to={`/dashboard/observations/${
+          node.entity_type === 'Artifact' ? 'artifacts' : 'observables'
+        }/${node.id}`}
       >
+        <ListItemIcon
+          classes={{ root: classes.itemIcon }}
+          style={{ minWidth: 40 }}
+          onClick={onToggleEntity.bind(this, node)}
+        >
+          <Checkbox
+            edge="start"
+            checked={selectAll || node.id in (selectedElements || {})}
+            disableRipple={true}
+          />
+        </ListItemIcon>
         <ListItemIcon classes={{ root: classes.itemIcon }}>
           <HexagonOutline />
         </ListItemIcon>
@@ -95,16 +117,15 @@ class StixCyberObservableLineComponent extends Component {
                 className={classes.bodyItem}
                 style={{ width: dataColumns.objectMarking.width }}
               >
-                {take(1, pathOr([], ['objectMarking', 'edges'], node)).map(
-                  (markingDefinition) => (
-                    <ItemMarking
-                      key={markingDefinition.node.id}
-                      variant="inList"
-                      label={markingDefinition.node.definition}
-                      color={markingDefinition.node.x_opencti_color}
-                    />
-                  ),
-                )}
+                <ItemMarkings
+                  markingDefinitions={pathOr(
+                    [],
+                    ['objectMarking', 'edges'],
+                    node,
+                  )}
+                  limit={1}
+                  variant="inList"
+                />
               </div>
             </div>
           }
@@ -124,6 +145,9 @@ StixCyberObservableLineComponent.propTypes = {
   nsdt: PropTypes.func,
   t: PropTypes.func,
   onLabelClick: PropTypes.func,
+  onToggleEntity: PropTypes.func,
+  selectedElements: PropTypes.object,
+  selectAll: PropTypes.bool,
 };
 
 const StixCyberObservableLineFragment = createFragmentContainer(
@@ -133,6 +157,7 @@ const StixCyberObservableLineFragment = createFragmentContainer(
       fragment StixCyberObservableLine_node on StixCyberObservable {
         id
         entity_type
+        parent_types
         observable_value
         created_at
         objectMarking {
@@ -168,6 +193,12 @@ class StixCyberObservableLineDummyComponent extends Component {
     const { classes, dataColumns } = this.props;
     return (
       <ListItem classes={{ root: classes.item }} divider={true}>
+        <ListItemIcon
+          classes={{ root: classes.itemIconDisabled }}
+          style={{ minWidth: 40 }}
+        >
+          <Checkbox edge="start" disabled={true} disableRipple={true} />
+        </ListItemIcon>
         <ListItemIcon classes={{ root: classes.itemIconDisabled }}>
           <HexagonOutline />
         </ListItemIcon>

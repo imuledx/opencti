@@ -711,10 +711,7 @@ class InvestigationGraphBar extends Component {
                     </DialogContentText>
                   </DialogContent>
                   <DialogActions>
-                    <Button
-                      onClick={this.handleCloseRemove.bind(this)}
-                      color="primary"
-                    >
+                    <Button onClick={this.handleCloseRemove.bind(this)}>
                       {t('Cancel')}
                     </Button>
                     <Button
@@ -778,7 +775,7 @@ class InvestigationGraphBar extends Component {
                               'Threat-Actor',
                               'Tool',
                               'Vulnerability',
-                              'X-OpenCTI-Incident',
+                              'Incident',
                               'Stix-Cyber-Observable',
                               'Domain-Name',
                               'IPv4-Addr',

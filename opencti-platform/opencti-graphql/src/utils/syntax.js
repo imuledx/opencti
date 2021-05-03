@@ -12,6 +12,7 @@ export const checkObservableSyntax = (observableType, observableData) => {
       if (!domainChecker.test(observableData.value)) return 'Valid domain name';
       break;
     case C.ENTITY_HASHED_OBSERVABLE_STIX_FILE:
+    case C.ENTITY_HASHED_OBSERVABLE_ARTIFACT:
       if (observableData.hashes && observableData.hashes.MD5) {
         const md5Checker = /^[a-fA-F0-9]{32}$/;
         if (!md5Checker.test(observableData.hashes.MD5)) return 'Valid MD5 hash';
@@ -30,7 +31,7 @@ export const checkObservableSyntax = (observableType, observableData) => {
       }
       break;
     case C.ENTITY_X_OPENCTI_HOSTNAME:
-      const hostnameChecker = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-_]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-_]*[A-Za-z0-9])$/;
+      const hostnameChecker = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-_]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-_]*[A-Za-z0-9])$/;
       if (!hostnameChecker.test(observableData.value)) return 'Valid hostname';
       break;
     case C.ENTITY_EMAIL_ADDR:

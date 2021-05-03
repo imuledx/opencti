@@ -20,7 +20,7 @@ export const RELATION_HOSTS = 'hosts';
 export const RELATION_OWNS = 'owns';
 export const RELATION_AUTHORED_BY = 'authored-by';
 export const RELATION_BEACONS_TO = 'beacons-to';
-export const RELATION_EXFILTRATE_TO = 'exfiltrate-to';
+export const RELATION_EXFILTRATES_TO = 'exfiltrates-to';
 export const RELATION_DOWNLOADS = 'downloads';
 export const RELATION_DROPS = 'drops';
 export const RELATION_EXPLOITS = 'exploits';
@@ -34,6 +34,7 @@ export const RELATION_REMEDIATES = 'remediates';
 export const RELATION_RELATED_TO = 'related-to';
 export const RELATION_DERIVED_FROM = 'derived-from';
 export const RELATION_DUPLICATE_OF = 'duplicate-of';
+export const RELATION_BELONGS_TO = 'belongs-to';
 export const RELATION_PART_OF = 'part-of'; // Extension
 export const RELATION_SUBTECHNIQUE_OF = 'subtechnique-of'; // Extension
 export const RELATION_REVOKED_BY = 'revoked-by'; // Extension
@@ -43,7 +44,7 @@ const STIX_CORE_RELATIONSHIPS = [
   RELATION_USES,
   RELATION_BEACONS_TO,
   RELATION_ATTRIBUTED_TO,
-  RELATION_EXFILTRATE_TO,
+  RELATION_EXFILTRATES_TO,
   RELATION_COMPROMISES,
   RELATION_DOWNLOADS,
   RELATION_EXPLOITS,
@@ -59,6 +60,7 @@ const STIX_CORE_RELATIONSHIPS = [
   RELATION_BASED_ON,
   RELATION_HOSTS,
   RELATION_OWNS,
+  RELATION_AUTHORED_BY,
   RELATION_COMMUNICATES_WITH,
   RELATION_MITIGATES,
   RELATION_CONTROLS,
@@ -73,6 +75,7 @@ const STIX_CORE_RELATIONSHIPS = [
   RELATION_PART_OF,
   RELATION_SUBTECHNIQUE_OF,
   RELATION_REVOKED_BY,
+  RELATION_BELONGS_TO,
 ];
 schemaTypes.register(ABSTRACT_STIX_CORE_RELATIONSHIP, STIX_CORE_RELATIONSHIPS);
 export const isStixCoreRelationship = (type) =>

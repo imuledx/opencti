@@ -49,13 +49,14 @@ import noteResolvers from '../resolvers/note';
 import observedDataResolvers from '../resolvers/observedData';
 import opinionResolvers from '../resolvers/opinion';
 import indicatorResolvers from '../resolvers/indicator';
-import xOpenCTIIncidentResolvers from '../resolvers/xOpenCTIIncident';
+import incidentResolvers from '../resolvers/incident';
 import AuthDirectives, { AUTH_DIRECTIVE } from './authDirective';
 import connectorResolvers from '../resolvers/connector';
 import fileResolvers from '../resolvers/file';
 import typeDefs from '../../config/schema/opencti.graphql';
 import organizationOrIndividualResolvers from '../resolvers/organizationOrIndividual';
 import taxiiResolvers from '../resolvers/taxii';
+import taskResolvers from '../resolvers/task';
 
 const createSchema = () => {
   const globalResolvers = {
@@ -72,6 +73,7 @@ const createSchema = () => {
     workspaceResolvers,
     subTypeResolvers,
     fileResolvers,
+    taskResolvers,
     // ENTITIES
     // INTERNAL OBJECT ENTITIES
     internalObjectResolvers,
@@ -116,7 +118,7 @@ const createSchema = () => {
     threatActorResolvers,
     toolResolvers,
     vulnerabilityResolvers,
-    xOpenCTIIncidentResolvers,
+    incidentResolvers,
     // STIX CYBER OBSERVABLE ENTITIES
     stixCyberObservableResolvers,
     // INTERNAL RELATIONSHIPS

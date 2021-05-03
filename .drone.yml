@@ -3,7 +3,7 @@ name: opencti-tests
 
 steps:
 - name: api-tests
-  image: nikolaik/python-nodejs:python3.8-nodejs15-alpine
+  image: nikolaik/python-nodejs:python3.9-nodejs15-alpine
   environment:
     APP__ADMIN__PASSWORD: admin
     APP__ADMIN__TOKEN: bfa014e0-e02e-4aa6-a42b-603b19dcf159
@@ -27,7 +27,7 @@ steps:
       - opencti-platform/opencti-graphql/coverage
 
 - name: frontend-tests
-  image: nikolaik/python-nodejs:python3.8-nodejs15-alpine
+  image: nikolaik/python-nodejs:python3.9-nodejs15-alpine
   commands: 
   - cd opencti-platform/opencti-front
   - yarn install
@@ -61,14 +61,14 @@ steps:
 
 services:
 - name: redis
-  image: redis:6.2.1
+  image: redis:6.2.2
 - name: elastic
-  image: docker.elastic.co/elasticsearch/elasticsearch:7.12.0
+  image: docker.elastic.co/elasticsearch/elasticsearch:7.12.1
   environment:
     discovery.type: single-node
     ES_JAVA_OPTS: -Xms750m -Xmx750m
 - name: minio
-  image: minio/minio:RELEASE.2021-03-26T00-00-41Z
+  image: minio/minio:RELEASE.2021-04-22T15-44-28Z
   environment:
     MINIO_ACCESS_KEY: ChangeMe
     MINIO_SECRET_KEY: ChangeMe

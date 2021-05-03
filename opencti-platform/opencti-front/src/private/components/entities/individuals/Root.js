@@ -1,7 +1,10 @@
 import React, { Component } from 'react';
 import * as PropTypes from 'prop-types';
-import { Route, Redirect, withRouter } from 'react-router-dom';
+import {
+  Route, Redirect, withRouter, Switch,
+} from 'react-router-dom';
 import graphql from 'babel-plugin-relay/macro';
+import { propOr } from 'ramda';
 import {
   QueryRenderer,
   requestSubscription,
@@ -15,6 +18,12 @@ import IndividualPopover from './IndividualPopover';
 import Loader from '../../../../components/Loader';
 import StixCoreObjectHistory from '../../common/stix_core_objects/StixCoreObjectHistory';
 import IndividualAnalysis from './IndividualAnalysis';
+import ErrorNotFound from '../../../../components/ErrorNotFound';
+import {
+  buildViewParamsFromUrlAndStorage,
+  saveViewParameters,
+} from '../../../../utils/ListParameters';
+import StixCoreObjectKnowledgeBar from '../../common/stix_core_objects/StixCoreObjectKnowledgeBar';
 
 const subscription = graphql`
   subscription RootIndividualsSubscription($id: ID!) {
@@ -47,6 +56,42 @@ const individualQuery = graphql`
 `;
 
 class RootIndividual extends Component {
+  constructor(props) {
+    super(props);
+    const {
+      match: {
+        params: { individualId },
+      },
+    } = props;
+    const params = buildViewParamsFromUrlAndStorage(
+      props.history,
+      props.location,
+      `view-individual-${individualId}`,
+    );
+    this.state = {
+      viewAs: propOr('knowledge', 'viewAs', params),
+    };
+  }
+
+  saveView() {
+    const {
+      match: {
+        params: { individualId },
+      },
+    } = this.props;
+    saveViewParameters(
+      this.props.history,
+      this.props.location,
+      `view-individual-${individualId}`,
+      this.state,
+      true,
+    );
+  }
+
+  handleChangeViewAs(event) {
+    this.setState({ viewAs: event.target.value }, () => this.saveView());
+  }
+
   componentDidMount() {
     const {
       match: {
@@ -71,91 +116,121 @@ class RootIndividual extends Component {
         params: { individualId },
       },
     } = this.props;
+    const { viewAs } = this.state;
+    const link = `/dashboard/entities/individuals/${individualId}/knowledge`;
     return (
       <div>
         <TopBar me={me || null} />
+        <Route path="/dashboard/entities/individuals/:individualId/knowledge">
+          {viewAs === 'knowledge' && (
+            <StixCoreObjectKnowledgeBar
+              stixCoreObjectLink={link}
+              availableSections={[
+                'individuals',
+                'individuals',
+                'threat_actors',
+                'intrusion_sets',
+                'campaigns',
+                'incidents',
+                'malwares',
+                'observables',
+                'sightings',
+              ]}
+            />
+          )}
+        </Route>
         <QueryRenderer
           query={individualQuery}
           variables={{ id: individualId }}
           render={({ props }) => {
-            if (props && props.individual) {
-              return (
-                <div>
-                  <Route
-                    exact
-                    path="/dashboard/entities/individuals/:individualId"
-                    render={(routeProps) => (
-                      <Individual
-                        {...routeProps}
-                        individual={props.individual}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/individuals/:individualId/knowledge"
-                    render={() => (
-                      <Redirect
-                        to={`/dashboard/entities/individuals/${individualId}/knowledge/overview`}
-                      />
-                    )}
-                  />
-                  <Route
-                    path="/dashboard/entities/individuals/:individualId/knowledge"
-                    render={(routeProps) => (
-                      <IndividualKnowledge
-                        {...routeProps}
-                        individual={props.individual}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/individuals/:individualId/analysis"
-                    render={(routeProps) => (
-                      <IndividualAnalysis
-                        {...routeProps}
-                        individual={props.individual}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/individuals/:individualId/files"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.individual}
-                          PopoverComponent={<IndividualPopover />}
-                        />
-                        <FileManager
+            if (props) {
+              if (props.individual) {
+                return (
+                  <Switch>
+                    <Route
+                      exact
+                      path="/dashboard/entities/individuals/:individualId"
+                      render={(routeProps) => (
+                        <Individual
                           {...routeProps}
-                          id={individualId}
-                          connectorsImport={[]}
-                          connectorsExport={props.connectorsForExport}
-                          entity={props.individual}
+                          individual={props.individual}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/individuals/:individualId/history"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.individual}
-                          PopoverComponent={<IndividualPopover />}
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/individuals/:individualId/knowledge"
+                      render={() => (
+                        <Redirect
+                          to={`/dashboard/entities/individuals/${individualId}/knowledge/overview`}
                         />
-                        <StixCoreObjectHistory
+                      )}
+                    />
+                    <Route
+                      path="/dashboard/entities/individuals/:individualId/knowledge"
+                      render={(routeProps) => (
+                        <IndividualKnowledge
                           {...routeProps}
-                          stixCoreObjectId={individualId}
+                          individual={props.individual}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                </div>
-              );
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/individuals/:individualId/analysis"
+                      render={(routeProps) => (
+                        <IndividualAnalysis
+                          {...routeProps}
+                          individual={props.individual}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
+                        />
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/individuals/:individualId/files"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.individual}
+                            PopoverComponent={<IndividualPopover />}
+                            onViewAs={this.handleChangeViewAs.bind(this)}
+                          />
+                          <FileManager
+                            {...routeProps}
+                            id={individualId}
+                            connectorsImport={[]}
+                            connectorsExport={props.connectorsForExport}
+                            entity={props.individual}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/individuals/:individualId/history"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.individual}
+                            PopoverComponent={<IndividualPopover />}
+                          />
+                          <StixCoreObjectHistory
+                            {...routeProps}
+                            stixCoreObjectId={individualId}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                  </Switch>
+                );
+              }
+              return <ErrorNotFound />;
             }
             return <Loader />;
           }}

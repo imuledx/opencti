@@ -1,8 +1,9 @@
+import { readFileSync } from 'fs';
 import Redis from 'ioredis';
 import Redlock from 'redlock';
 import { RedisPubSub } from 'graphql-redis-subscriptions';
 import * as R from 'ramda';
-import conf, { logger } from '../config/conf';
+import conf, { configureCA, logApp } from '../config/conf';
 import {
   generateLogMessage,
   isEmptyField,
@@ -24,16 +25,21 @@ import { now } from '../utils/format';
 import RedisStore from './sessionStore-redis';
 import SessionStoreMemory from './sessionStore-memory';
 
+const USE_SSL = conf.get('redis:use_ssl');
+const REDIS_CA = conf.get('redis:ca').map((path) => readFileSync(path));
+
 const BASE_DATABASE = 0; // works key for tracking / stream
 export const CONTEXT_DATABASE = 1; // locks / user context
 export const SESSION_DATABASE = 2; // locks / user context
 const OPENCTI_STREAM = 'stream.opencti';
 const REDIS_EXPIRE_TIME = 90;
+
 const redisOptions = (database) => ({
   lazyConnect: true,
   db: database,
   port: conf.get('redis:port'),
   host: conf.get('redis:hostname'),
+  tls: USE_SSL ? configureCA(REDIS_CA) : null,
   username: conf.get('redis:username'),
   password: conf.get('redis:password'),
   retryStrategy: /* istanbul ignore next */ (times) => Math.min(times * 50, 2000),
@@ -52,7 +58,7 @@ export const createRedisClient = async (database = BASE_DATABASE) => {
       throw DatabaseError('Redis seems down');
     });
   }
-  client.on('connect', () => logger.debug('[REDIS] Redis client connected'));
+  client.on('connect', () => logApp.debug('[REDIS] Redis client connected'));
   return client;
 };
 
@@ -218,7 +224,7 @@ export const lockResource = async (resources, automaticExtension = true) => {
         queue();
       }
     } catch (e) {
-      logger.debug('[REDIS] Failed to extend resource', { locks });
+      logApp.debug('[REDIS] Failed to extend resource', { locks });
     }
   };
   const queue = () => {
@@ -243,7 +249,7 @@ export const lockResource = async (resources, automaticExtension = true) => {
       try {
         await lock.unlock();
       } catch (e) {
-        logger.debug('[REDIS] Failed to unlock resource', { locks });
+        logApp.debug('[REDIS] Failed to unlock resource', { locks });
       }
     },
   };
@@ -467,11 +473,11 @@ export const createStreamProcessor = (callback) => {
     info: async () => processInfo(),
     start: async () => {
       const client = await createRedisClient(); // Create client for this processing loop
-      logger.info('[STREAM] Starting streaming processor');
+      logApp.info('[STREAM] Starting streaming processor');
       processingLoopPromise = processingLoop(client);
     },
     shutdown: async () => {
-      logger.info('[STREAM] Shutdown streaming processor');
+      logApp.info('[STREAM] Shutdown streaming processor');
       streamListening = false;
       if (processingLoopPromise) {
         await processingLoopPromise;
@@ -483,12 +489,17 @@ export const getStreamRange = async (from, limit, callback) => {
   const client = await createRedisClient();
   const size = limit > MAX_RANGE_MESSAGES ? MAX_RANGE_MESSAGES : limit;
   return client.call('XRANGE', OPENCTI_STREAM, from, '+', 'COUNT', size).then(async (results) => {
+    let lastEventId;
     if (results && results.length > 0) {
       await processStreamResult(results, callback);
+      const lastResult = R.last(results);
+      lastEventId = R.head(lastResult);
+    } else {
+      const streamInfo = await fetchStreamInfo();
+      lastEventId = streamInfo.lastEventId;
     }
     await client.disconnect();
-    const lastResult = R.last(results);
-    return { lastEventId: R.head(lastResult) };
+    return { lastEventId };
   });
 };
 // endregion

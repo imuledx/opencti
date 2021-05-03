@@ -23,6 +23,8 @@ import {
   stixCyberObservableDistributionByEntity,
   stixCyberObservablesExportPush,
   stixCyberObservablesExportAsk,
+  promoteObservableToIndicator,
+  artifactImport,
 } from '../domain/stixCyberObservable';
 import { pubsub } from '../database/redis';
 import withCancel from '../graphql/subscriptionWrapper';
@@ -72,6 +74,10 @@ const stixCyberObservableResolvers = {
     stixCoreRelationships: (rel, args, { user }) => stixCoreRelationships(user, rel.id, args),
     toStix: (stixCyberObservable) => JSON.stringify(convertDataToStix(stixCyberObservable)),
   },
+  Artifact: {
+    importFiles: (stixCyberObservable, { first }, { user }) =>
+      filesListing(user, first, `import/${stixCyberObservable.entity_type}/${stixCyberObservable.id}/`),
+  },
   Mutation: {
     stixCyberObservableEdit: (_, { id }, { user }) => ({
       delete: () => stixCyberObservableDelete(user, id),
@@ -85,11 +91,13 @@ const stixCyberObservableResolvers = {
       exportAsk: (args) => stixCyberObservableExportAsk(user, assoc('stixCyberObservableId', id, args)),
       exportPush: ({ file }) => stixCyberObservableExportPush(user, id, file),
       askEnrichment: ({ connectorId }) => stixCyberObservableAskEnrichment(user, id, connectorId),
+      promote: () => promoteObservableToIndicator(user, id),
     }),
     stixCyberObservableAdd: (_, args, { user }) => addStixCyberObservable(user, args),
     stixCyberObservablesExportAsk: (_, args, { user }) => stixCyberObservablesExportAsk(user, args),
     stixCyberObservablesExportPush: (_, { file, listFilters }, { user }) =>
       stixCyberObservablesExportPush(user, file, listFilters),
+    artifactImport: (_, args, { user }) => artifactImport(user, args),
   },
   Subscription: {
     stixCyberObservable: {

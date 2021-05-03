@@ -1,7 +1,10 @@
 import React, { Component } from 'react';
 import * as PropTypes from 'prop-types';
-import { Route, Redirect, withRouter } from 'react-router-dom';
+import {
+  Route, Redirect, withRouter, Switch,
+} from 'react-router-dom';
 import graphql from 'babel-plugin-relay/macro';
+import { propOr } from 'ramda';
 import {
   QueryRenderer,
   requestSubscription,
@@ -15,6 +18,12 @@ import OrganizationPopover from './OrganizationPopover';
 import Loader from '../../../../components/Loader';
 import StixCoreObjectHistory from '../../common/stix_core_objects/StixCoreObjectHistory';
 import OrganizationAnalysis from './OrganizationAnalysis';
+import ErrorNotFound from '../../../../components/ErrorNotFound';
+import {
+  buildViewParamsFromUrlAndStorage,
+  saveViewParameters,
+} from '../../../../utils/ListParameters';
+import StixCoreObjectKnowledgeBar from '../../common/stix_core_objects/StixCoreObjectKnowledgeBar';
 
 const subscription = graphql`
   subscription RootOrganizationSubscription($id: ID!) {
@@ -47,6 +56,41 @@ const organizationQuery = graphql`
 `;
 
 class RootOrganization extends Component {
+  constructor(props) {
+    super(props);
+    const {
+      match: {
+        params: { organizationId },
+      },
+    } = props;
+    const params = buildViewParamsFromUrlAndStorage(
+      props.history,
+      props.location,
+      `view-organization-${organizationId}`,
+    );
+    this.state = {
+      viewAs: propOr('knowledge', 'viewAs', params),
+    };
+  }
+
+  saveView() {
+    const {
+      match: {
+        params: { organizationId },
+      },
+    } = this.props;
+    saveViewParameters(
+      this.props.history,
+      this.props.location,
+      `view-organization-${organizationId}`,
+      this.state,
+    );
+  }
+
+  handleChangeViewAs(event) {
+    this.setState({ viewAs: event.target.value }, () => this.saveView());
+  }
+
   componentDidMount() {
     const {
       match: {
@@ -71,91 +115,125 @@ class RootOrganization extends Component {
         params: { organizationId },
       },
     } = this.props;
+    const { viewAs } = this.state;
+    const link = `/dashboard/entities/organizations/${organizationId}/knowledge`;
     return (
       <div>
         <TopBar me={me || null} />
+        <Route path="/dashboard/entities/organizations/:organizationId/knowledge">
+          {viewAs === 'knowledge' && (
+            <StixCoreObjectKnowledgeBar
+              stixCoreObjectLink={link}
+              availableSections={[
+                'organizations',
+                'individuals',
+                'locations',
+                'sectors',
+                'threat_actors',
+                'intrusion_sets',
+                'campaigns',
+                'incidents',
+                'malwares',
+                'attack_patterns',
+                'tools',
+                'observables',
+                'sightings',
+              ]}
+            />
+          )}
+        </Route>
         <QueryRenderer
           query={organizationQuery}
           variables={{ id: organizationId }}
           render={({ props }) => {
-            if (props && props.organization) {
-              return (
-                <div>
-                  <Route
-                    exact
-                    path="/dashboard/entities/organizations/:organizationId"
-                    render={(routeProps) => (
-                      <Organization
-                        {...routeProps}
-                        organization={props.organization}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/organizations/:organizationId/knowledge"
-                    render={() => (
-                      <Redirect
-                        to={`/dashboard/entities/organizations/${organizationId}/knowledge/overview`}
-                      />
-                    )}
-                  />
-                  <Route
-                    path="/dashboard/entities/organizations/:organizationId/knowledge"
-                    render={(routeProps) => (
-                      <OrganizationKnowledge
-                        {...routeProps}
-                        organization={props.organization}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/organizations/:organizationId/analysis"
-                    render={(routeProps) => (
-                      <OrganizationAnalysis
-                        {...routeProps}
-                        organization={props.organization}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/organizations/:organizationId/files"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.organization}
-                          PopoverComponent={<OrganizationPopover />}
-                        />
-                        <FileManager
+            if (props) {
+              if (props.organization) {
+                return (
+                  <Switch>
+                    <Route
+                      exact
+                      path="/dashboard/entities/organizations/:organizationId"
+                      render={(routeProps) => (
+                        <Organization
                           {...routeProps}
-                          id={organizationId}
-                          connectorsImport={[]}
-                          connectorsExport={props.connectorsForExport}
-                          entity={props.organization}
+                          organization={props.organization}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/entities/organizations/:organizationId/history"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.organization}
-                          PopoverComponent={<OrganizationPopover />}
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/organizations/:organizationId/knowledge"
+                      render={() => (
+                        <Redirect
+                          to={`/dashboard/entities/organizations/${organizationId}/knowledge/overview`}
                         />
-                        <StixCoreObjectHistory
+                      )}
+                    />
+                    <Route
+                      path="/dashboard/entities/organizations/:organizationId/knowledge"
+                      render={(routeProps) => (
+                        <OrganizationKnowledge
                           {...routeProps}
-                          stixCoreObjectId={organizationId}
+                          organization={props.organization}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                </div>
-              );
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/organizations/:organizationId/analysis"
+                      render={(routeProps) => (
+                        <OrganizationAnalysis
+                          {...routeProps}
+                          organization={props.organization}
+                          viewAs={viewAs}
+                          onViewAs={this.handleChangeViewAs.bind(this)}
+                        />
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/organizations/:organizationId/files"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.organization}
+                            PopoverComponent={<OrganizationPopover />}
+                            onViewAs={this.handleChangeViewAs.bind(this)}
+                          />
+                          <FileManager
+                            {...routeProps}
+                            id={organizationId}
+                            connectorsImport={[]}
+                            connectorsExport={props.connectorsForExport}
+                            entity={props.organization}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/entities/organizations/:organizationId/history"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.organization}
+                            PopoverComponent={<OrganizationPopover />}
+                          />
+                          <StixCoreObjectHistory
+                            {...routeProps}
+                            stixCoreObjectId={organizationId}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                  </Switch>
+                );
+              }
+              return <ErrorNotFound />;
             }
             return <Loader />;
           }}

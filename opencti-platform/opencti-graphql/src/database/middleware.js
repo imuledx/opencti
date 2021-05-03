@@ -105,7 +105,9 @@ import {
   dateAttributes,
   dictAttributes,
   isDictionaryAttribute,
+  isModifiedObject,
   isMultipleAttribute,
+  isUpdatedAtObject,
   multipleAttributes,
   numericAttributes,
   statsDateAttributes,
@@ -115,6 +117,7 @@ import {
   ATTRIBUTE_ALIASES,
   ATTRIBUTE_ALIASES_OPENCTI,
   ENTITY_TYPE_CONTAINER_REPORT,
+  ENTITY_TYPE_INDICATOR,
   isStixDomainObject,
   isStixDomainObjectIdentity,
   isStixDomainObjectLocation,
@@ -125,7 +128,7 @@ import {
 import { ENTITY_TYPE_LABEL, isStixMetaObject } from '../schema/stixMetaObject';
 import { isStixSightingRelationship } from '../schema/stixSightingRelationship';
 import { isStixCyberObservable, stixCyberObservableFieldsToBeUpdated } from '../schema/stixCyberObservable';
-import { BUS_TOPICS, logger } from '../config/conf';
+import { BUS_TOPICS, logApp } from '../config/conf';
 import {
   dayFormat,
   escape,
@@ -140,6 +143,7 @@ import {
   yearFormat,
 } from '../utils/format';
 import { checkObservableSyntax } from '../utils/syntax';
+import { deleteAllFiles } from './minio';
 
 // region global variables
 export const MAX_BATCH_SIZE = 300;
@@ -209,6 +213,7 @@ const batchListThrough = async (user, sources, sourceSide, relationType, targetE
   const filters = [directionInternalIdFilter, oppositeTypeFilter];
   // Resolve all relations
   const relations = await elPaginate(user, READ_RELATIONSHIPS_INDICES, {
+    first: 5000,
     connectionFormat: false,
     filters,
     types: [relationType],
@@ -287,6 +292,7 @@ const buildRelationsFilter = (relationshipType, args) => {
     fromTypes = [],
     toTypes = [],
     elementWithTargetTypes = [],
+    relationshipTypes = [],
   } = args;
   const {
     startTimeStart,
@@ -345,17 +351,14 @@ const buildRelationsFilter = (relationshipType, args) => {
   const nestedFrom = [];
   if (fromId) {
     nestedFrom.push({ key: 'internal_id', values: [fromId] });
-    if (fromRole) {
-      nestedFrom.push({ key: 'role', values: [fromRole] });
-    } else {
-      nestedFrom.push({ key: 'role', values: ['*_from'], operator: 'wildcard' });
-    }
   }
   if (fromTypes && fromTypes.length > 0) {
     nestedFrom.push({ key: 'types', values: fromTypes });
-    if (toRole) {
-      nestedFrom.push({ key: 'role', values: ['*_from'], operator: 'wildcard' });
-    }
+  }
+  if (fromRole) {
+    nestedFrom.push({ key: 'role', values: [fromRole] });
+  } else if (fromId || (fromTypes && fromTypes.length > 0)) {
+    nestedFrom.push({ key: 'role', values: ['*_from'], operator: 'wildcard' });
   }
   if (nestedFrom.length > 0) {
     finalFilters.push({ key: 'connections', nested: nestedFrom });
@@ -365,17 +368,14 @@ const buildRelationsFilter = (relationshipType, args) => {
   const nestedTo = [];
   if (toId) {
     nestedTo.push({ key: 'internal_id', values: [toId] });
-    if (toRole) {
-      nestedTo.push({ key: 'role', values: [toRole] });
-    } else {
-      nestedTo.push({ key: 'role', values: ['*_to'], operator: 'wildcard' });
-    }
   }
   if (toTypes && toTypes.length > 0) {
     nestedTo.push({ key: 'types', values: toTypes });
-    if (fromRole) {
-      nestedTo.push({ key: 'role', values: ['*_to'], operator: 'wildcard' });
-    }
+  }
+  if (toRole) {
+    nestedTo.push({ key: 'role', values: [toRole] });
+  } else if (toId || (toTypes && toTypes.length > 0)) {
+    nestedTo.push({ key: 'role', values: ['*_to'], operator: 'wildcard' });
   }
   if (nestedTo.length > 0) {
     finalFilters.push({ key: 'connections', nested: nestedTo });
@@ -392,7 +392,10 @@ const buildRelationsFilter = (relationshipType, args) => {
   if (startDate) finalFilters.push({ key: 'created_at', values: [startDate], operator: 'gt' });
   if (endDate) finalFilters.push({ key: 'created_at', values: [endDate], operator: 'lt' });
   if (confidences && confidences.length > 0) finalFilters.push({ key: 'confidence', values: confidences });
-  return R.pipe(R.assoc('types', [relationToGet]), R.assoc('filters', finalFilters))(args);
+  return R.pipe(
+    R.assoc('types', relationshipTypes.length > 0 ? relationshipTypes : [relationToGet]),
+    R.assoc('filters', finalFilters)
+  )(args);
 };
 const buildThingsFilter = (thingsTypes, args) => {
   return R.assoc('types', thingsTypes, args);
@@ -433,7 +436,7 @@ export const loadEntity = async (user, entityTypes, args = {}) => {
 // endregion
 
 // region Loader element
-const internalFindByIds = (user, ids, args = {}) => {
+export const internalFindByIds = (user, ids, args = {}) => {
   return elFindByIds(user, ids, args);
 };
 export const internalLoadById = (user, id, args = {}) => {
@@ -842,7 +845,7 @@ const mergeEntitiesRaw = async (user, targetEntity, sourceEntities, opts = {}) =
   if (notFullyResolved) {
     throw UnsupportedError('[OPENCTI] Merging required full resolved inputs');
   }
-  logger.info(`[OPENCTI] Merging ${sourceEntities.map((i) => i.internal_id).join(',')} in ${targetEntity.internal_id}`);
+  logApp.info(`[OPENCTI] Merging ${sourceEntities.map((i) => i.internal_id).join(',')} in ${targetEntity.internal_id}`);
   // Pre-checks
   const sourceIds = R.map((e) => e.internal_id, sourceEntities);
   if (R.includes(targetEntity.internal_id, sourceIds)) {
@@ -955,17 +958,17 @@ const mergeEntitiesRaw = async (user, targetEntity, sourceEntities, opts = {}) =
     }
   }
   // Update all impacted relations.
-  logger.info(`[OPENCTI] Merging updating ${updateConnections.length} relations for ${targetEntity.internal_id}`);
+  logApp.info(`[OPENCTI] Merging updating ${updateConnections.length} relations for ${targetEntity.internal_id}`);
   let currentRelsUpdateCount = 0;
   const groupsOfRelsUpdate = R.splitEvery(MAX_SPLIT, updateConnections);
   const concurrentRelsUpdate = async (connsToUpdate) => {
     await elUpdateRelationConnections(connsToUpdate);
     currentRelsUpdateCount += connsToUpdate.length;
-    logger.info(`[OPENCTI] Merging, updating relations ${currentRelsUpdateCount} / ${updateConnections.length}`);
+    logApp.info(`[OPENCTI] Merging, updating relations ${currentRelsUpdateCount} / ${updateConnections.length}`);
   };
   await Promise.map(groupsOfRelsUpdate, concurrentRelsUpdate, { concurrency: ES_MAX_CONCURRENCY });
   // Update all impacted entities
-  logger.info(`[OPENCTI] Merging impacting ${updateEntities.length} entities for ${targetEntity.internal_id}`);
+  logApp.info(`[OPENCTI] Merging impacting ${updateEntities.length} entities for ${targetEntity.internal_id}`);
   const updatesByEntity = R.groupBy((i) => i.id, updateEntities);
   const entries = Object.entries(updatesByEntity);
   let currentEntUpdateCount = 0;
@@ -978,7 +981,7 @@ const mergeEntitiesRaw = async (user, targetEntity, sourceEntities, opts = {}) =
   const concurrentEntitiesUpdate = async (entitiesToUpdate) => {
     await elUpdateEntityConnections(entitiesToUpdate);
     currentEntUpdateCount += entitiesToUpdate.length;
-    logger.info(`[OPENCTI] Merging updating bulk entities ${currentEntUpdateCount} / ${updateBulkEntities.length}`);
+    logApp.info(`[OPENCTI] Merging updating bulk entities ${currentEntUpdateCount} / ${updateBulkEntities.length}`);
   };
   await Promise.map(groupsOfEntityUpdate, concurrentEntitiesUpdate, { concurrency: ES_MAX_CONCURRENCY });
   // Take care of multi update
@@ -986,7 +989,7 @@ const mergeEntitiesRaw = async (user, targetEntity, sourceEntities, opts = {}) =
   await Promise.map(
     updateMultiEntities,
     async ([id, values]) => {
-      logger.info(`[OPENCTI] Merging, updating single entity ${id} / ${values.length}`);
+      logApp.info(`[OPENCTI] Merging, updating single entity ${id} / ${values.length}`);
       const changeOperations = values.filter((element) => element.toReplace !== null);
       const addOperations = values.filter((element) => element.toReplace === null);
       // Group all simple add into single operation
@@ -1058,7 +1061,7 @@ const mergeEntitiesRaw = async (user, targetEntity, sourceEntities, opts = {}) =
   if (impactedInputs.length > 0) {
     const updateAsInstance = partialInstanceWithInputs(targetEntity, impactedInputs);
     await elUpdateElement(updateAsInstance);
-    logger.info(`[OPENCTI] Merging attributes success for ${targetEntity.internal_id}`, { update: updateAsInstance });
+    logApp.info(`[OPENCTI] Merging attributes success for ${targetEntity.internal_id}`, { update: updateAsInstance });
   }
 };
 const computeParticipants = (entities) => {
@@ -1166,12 +1169,15 @@ const innerUpdateAttribute = async (user, instance, rawInput, options = {}) => {
     updatedInputs.push(yearInput);
     updateOperations.push(innerUpdateAttribute(user, instance, yearInput));
   }
-  // Update modified / updated_at
-  if (isStixDomainObject(instance.entity_type) && key !== 'modified' && key !== 'updated_at') {
-    const today = now();
+  const today = now();
+  // Update updated_at
+  if (isUpdatedAtObject(instance.entity_type) && key !== 'modified' && key !== 'updated_at') {
     const updatedAtInput = { key: 'updated_at', value: [today] };
     updatedInputs.push(updatedAtInput);
     updateOperations.push(innerUpdateAttribute(user, instance, updatedAtInput));
+  }
+  // Update modified
+  if (isModifiedObject(instance.entity_type) && key !== 'modified' && key !== 'updated_at') {
     const modifiedAtInput = { key: 'modified', value: [today] };
     updatedInputs.push(modifiedAtInput);
     updateOperations.push(innerUpdateAttribute(user, instance, modifiedAtInput));
@@ -1247,6 +1253,14 @@ export const updateAttributeRaw = async (user, instance, inputs, options = {}) =
       if (revokedIn.length > 0) {
         updatedInputs.push(revokedInput);
         impactedInputs.push(...revokedIn);
+      }
+      if (instance.entity_type === ENTITY_TYPE_INDICATOR && untilDateTime <= utcDate().toDate()) {
+        const detectionInput = { key: 'x_opencti_detection', value: [false] };
+        const detectionIn = await innerUpdateAttribute(user, instance, detectionInput, options);
+        if (detectionIn.length > 0) {
+          updatedInputs.push(detectionInput);
+          impactedInputs.push(...detectionIn);
+        }
       }
     }
     // If input impact aliases (aliases or x_opencti_aliases), regenerate internal ids
@@ -2055,6 +2069,7 @@ export const deleteElementById = async (user, elementId, type) => {
   try {
     // Try to get the lock in redis
     lock = await lockResource(participantIds);
+    await deleteAllFiles(user, `import/${element.entity_type}/${element.internal_id}`);
     await elDeleteElements(user, [element]);
     await storeDeleteEvent(user, element);
     // Temporary stored the deleted elements to prevent concurrent problem at creation

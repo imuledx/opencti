@@ -10,10 +10,9 @@ import EntityStixCoreRelationships from '../../common/stix_core_relationships/En
 import StixCoreRelationship from '../../common/stix_core_relationships/StixCoreRelationship';
 import ThreatActorPopover from './ThreatActorPopover';
 import StixDomainObjectHeader from '../../common/stix_domain_objects/StixDomainObjectHeader';
-import StixDomainObjectKillChain from '../../common/stix_domain_objects/StixDomainObjectKillChain';
+import StixDomainObjectAttackPatterns from '../../common/stix_domain_objects/StixDomainObjectAttackPatterns';
 import StixDomainObjectThreatKnowledge from '../../common/stix_domain_objects/StixDomainObjectThreatKnowledge';
 import StixDomainObjectVictimology from '../../common/stix_domain_objects/StixDomainObjectVictimology';
-import StixCoreObjectKnowledgeBar from '../../common/stix_core_objects/StixCoreObjectKnowledgeBar';
 import StixCoreObjectStixCyberObservables from '../../observations/stix_cyber_observables/StixCoreObjectStixCyberObservables';
 import EntityStixSightingRelationships from '../../events/stix_sighting_relationships/EntityStixSightingRelationships';
 
@@ -34,21 +33,6 @@ class ThreatActorKnowledgeComponent extends Component {
           stixDomainObject={threatActor}
           PopoverComponent={<ThreatActorPopover />}
         />
-        <StixCoreObjectKnowledgeBar
-          stixCoreObjectLink={link}
-          availableSections={[
-            'victimology',
-            'intrusion_sets',
-            'campaigns',
-            'incidents',
-            'malwares',
-            'attack_patterns',
-            'tools',
-            'vulnerabilities',
-            'observables',
-            'sightings',
-          ]}
-        />
         <Route
           exact
           path="/dashboard/threats/threat_actors/:threatActorId/knowledge/relations/:relationId"
@@ -67,6 +51,20 @@ class ThreatActorKnowledgeComponent extends Component {
             <StixDomainObjectThreatKnowledge
               stixDomainObjectId={threatActor.id}
               stixDomainObjectType="Threat-Actor"
+              {...routeProps}
+            />
+          )}
+        />
+        <Route
+          exact
+          path="/dashboard/threats/threat_actors/:threatActorId/knowledge/related"
+          render={(routeProps) => (
+            <EntityStixCoreRelationships
+              entityId={threatActor.id}
+              relationshipTypes={['related-to']}
+              targetStixDomainObjectTypes={['Stix-Domain-Object']}
+              entityLink={link}
+              allDirections={true}
               {...routeProps}
             />
           )}
@@ -114,7 +112,7 @@ class ThreatActorKnowledgeComponent extends Component {
           exact
           path="/dashboard/threats/threat_actors/:threatActorId/knowledge/attack_patterns"
           render={(routeProps) => (
-            <StixDomainObjectKillChain
+            <StixDomainObjectAttackPatterns
               stixDomainObjectId={threatActor.id}
               entityLink={link}
               {...routeProps}
@@ -167,7 +165,7 @@ class ThreatActorKnowledgeComponent extends Component {
             <EntityStixCoreRelationships
               entityId={threatActor.id}
               relationshipTypes={['attributed-to']}
-              targetStixDomainObjectTypes={['X-OpenCTI-Incident']}
+              targetStixDomainObjectTypes={['Incident']}
               entityLink={link}
               isRelationReversed={true}
               {...routeProps}
@@ -182,6 +180,20 @@ class ThreatActorKnowledgeComponent extends Component {
               stixCoreObjectId={threatActor.id}
               stixCoreObjectLink={link}
               noRightBar={true}
+              {...routeProps}
+            />
+          )}
+        />
+        <Route
+          exact
+          path="/dashboard/threats/threat_actors/:threatActorId/knowledge/infrastructures"
+          render={(routeProps) => (
+            <EntityStixCoreRelationships
+              entityId={threatActor.id}
+              relationshipTypes={['uses', 'compromises']}
+              targetStixDomainObjectTypes={['Infrastructure']}
+              entityLink={link}
+              isRelationReversed={false}
               {...routeProps}
             />
           )}

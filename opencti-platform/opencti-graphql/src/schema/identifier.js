@@ -56,7 +56,11 @@ const stixCyberObservableContribution = {
     [C.ENTITY_EMAIL_MESSAGE]: [{ src: 'from', dest: 'from_ref' }, { src: 'subject' }, { src: 'body' }],
     [C.ENTITY_HASHED_OBSERVABLE_ARTIFACT]: [{ src: 'hashes' }],
     [C.ENTITY_HASHED_OBSERVABLE_STIX_FILE]: [[{ src: 'hashes' }], [{ src: 'name' }]],
-    [C.ENTITY_HASHED_OBSERVABLE_X509_CERTIFICATE]: [{ src: 'hashes' }],
+    [C.ENTITY_HASHED_OBSERVABLE_X509_CERTIFICATE]: [
+      [{ src: 'hashes' }],
+      [{ src: 'serial_number' }],
+      [{ src: 'subject' }],
+    ],
     [C.ENTITY_IPV4_ADDR]: [{ src: 'value' }],
     [C.ENTITY_IPV6_ADDR]: [{ src: 'value' }],
     [C.ENTITY_MAC_ADDR]: [{ src: 'value' }],
@@ -130,8 +134,9 @@ const stixEntityContribution = {
     [I.ENTITY_TYPE_ATTRIBUTE]: [], // ALL
     [I.ENTITY_TYPE_WORKSPACE]: [], // ALL
     [I.ENTITY_TYPE_TAXII_COLLECTION]: [], // ALL
+    [I.ENTITY_TYPE_TASK]: [], // ALL
     // Stix Domain
-    [D.ENTITY_TYPE_ATTACK_PATTERN]: [{ src: X_MITRE_ID_FIELD }],
+    [D.ENTITY_TYPE_ATTACK_PATTERN]: [[{ src: X_MITRE_ID_FIELD }], [{ src: NAME_FIELD }]],
     [D.ENTITY_TYPE_CAMPAIGN]: [{ src: NAME_FIELD }],
     [D.ENTITY_TYPE_CONTAINER_NOTE]: [{ src: CONTENT_FIELD }],
     [D.ENTITY_TYPE_CONTAINER_OBSERVED_DATA]: [
@@ -156,7 +161,7 @@ const stixEntityContribution = {
     [D.ENTITY_TYPE_THREAT_ACTOR]: [{ src: NAME_FIELD }],
     [D.ENTITY_TYPE_TOOL]: [{ src: NAME_FIELD }],
     [D.ENTITY_TYPE_VULNERABILITY]: [{ src: NAME_FIELD }],
-    [D.ENTITY_TYPE_X_OPENCTI_INCIDENT]: [{ src: NAME_FIELD }],
+    [D.ENTITY_TYPE_INCIDENT]: [{ src: NAME_FIELD }],
     // Stix Meta
     [M.ENTITY_TYPE_MARKING_DEFINITION]: [{ src: 'definition' }, { src: 'definition_type' }],
     [M.ENTITY_TYPE_LABEL]: [{ src: 'value' }],

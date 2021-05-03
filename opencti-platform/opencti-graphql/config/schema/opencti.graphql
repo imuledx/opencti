@@ -459,6 +459,126 @@ type FileConnection {
   pageInfo: PageInfo!
   edges: [FileEdge]
 }
+
+############## Task
+enum TaskType {
+  QUERY
+  LIST
+}
+type TaskError {
+  id: ID!
+  timestamp: DateTime
+  message: String
+}
+enum TaskActionType {
+  DELETE
+  ADD
+  REMOVE
+  REPLACE
+  MERGE
+}
+enum TaskContextType {
+  ATTRIBUTE
+  RELATION
+}
+enum TasksOrdering {
+  id
+  type
+  completed
+  created_at
+  last_execution_date
+}
+enum TasksFilter {
+  initiator
+  completed
+}
+input TasksFiltering {
+  key: TasksFilter!
+  values: [String]
+  operator: String
+  filterMode: FilterMode
+}
+type TaskContext {
+  field: String
+  type: TaskContextType
+  values: [String]!
+}
+type TaskAction {
+  type: TaskActionType
+  context: TaskContext
+}
+
+interface Task {
+  id: ID!
+  type: TaskType
+  initiator: User
+  actions: [TaskAction]
+  created_at: DateTime
+  last_execution_date: DateTime
+  completed: Boolean
+  task_expected_number: Int
+  task_processed_number: Int
+  errors: [TaskError]
+}
+
+type ListTask implements Task {
+  id: ID!
+  type: TaskType
+  initiator: User
+  actions: [TaskAction]
+  created_at: DateTime
+  last_execution_date: DateTime
+  completed: Boolean
+  task_expected_number: Int
+  task_processed_number: Int
+  errors: [TaskError]
+  # ListTask
+  task_ids: [ID!]
+}
+
+type QueryTask implements Task {
+  id: ID!
+  type: TaskType
+  initiator: User
+  actions: [TaskAction]
+  created_at: DateTime
+  last_execution_date: DateTime
+  completed: Boolean
+  task_expected_number: Int
+  task_processed_number: Int
+  errors: [TaskError]
+  # QueryTask
+  task_filters: String!
+}
+
+type TaskConnectionEdge {
+  cursor: String!
+  node: Task!
+}
+
+type TaskConnection {
+  pageInfo: PageInfo!
+  edges: [TaskConnectionEdge]
+}
+
+input TaskContextInput {
+  field: String
+  type: TaskContextType
+  values: [String]!
+}
+input TaskActionInput {
+  type: TaskActionType!
+  context: TaskContextInput
+}
+input ListTaskAddInput {
+  ids: [ID!]
+  actions: [TaskActionInput]!
+}
+input QueryTaskAddInput {
+  filters: String!
+  actions: [TaskActionInput]!
+}
+
 ###### ENTITIES
 
 interface BasicObject {
@@ -495,6 +615,7 @@ type Settings implements InternalObject & BasicObject {
   platform_language: String
   platform_demo: Boolean
   platform_map_tile_server: String
+  platform_login_message: String
   created_at: DateTime!
   updated_at: DateTime!
   # Technical
@@ -581,6 +702,7 @@ type User implements BasicObject & InternalObject {
   lastname: String
   language: String
   external: Boolean
+  dashboard: String
   roles: [Role]!
   capabilities: [Capability]!
   groups: GroupConnection
@@ -689,9 +811,12 @@ input RegisterConnectorInput {
   type: ConnectorType!
   scope: [String!]
   auto: Boolean
+  only_contextual: Boolean
 }
 type RabbitMQConnection {
   host: String!
+  use_ssl: Boolean!
+  ca: [String]
   port: Int!
   user: String!
   pass: String!
@@ -712,6 +837,7 @@ type Connector implements BasicObject & InternalObject {
   name: String!
   active: Boolean
   auto: Boolean
+  only_contextual: Boolean
   connector_type: String
   connector_scope: [String!]
   connector_state: String
@@ -1024,6 +1150,7 @@ enum StixCoreObjectsFilter {
   labelledBy
   hasExternalReference
   objectContains
+  containedBy
   indicates
   confidence
 }
@@ -1117,6 +1244,7 @@ enum StixDomainObjectsFilter {
   labelledBy
   hasExternalReference
   objectContains
+  containedBy
   indicates
   confidence
   valid_from
@@ -1239,6 +1367,7 @@ enum AttackPatternsFilter {
   markedBy
   labelledBy
   mitigatedBy
+  revoked
 }
 input AttackPatternsFiltering {
   key: AttackPatternsFilter!
@@ -1332,7 +1461,7 @@ input AttackPatternAddInput {
   x_mitre_platforms: [String]
   x_mitre_permissions_required: [String]
   x_mitre_detection: String
-  x_mitre_id: String! @constraint(minLength: 1)
+  x_mitre_id: String
   createdBy: String
   objectMarking: [String]
   objectLabel: [String]
@@ -1464,6 +1593,8 @@ input CampaignAddInput {
 
 ############## Containers
 enum ContainersOrdering {
+  name
+  published
   created
   modified
   created_at
@@ -4163,8 +4294,8 @@ input VulnerabilityAddInput {
   update: Boolean
 }
 
-############## XOpenCTIIncident
-enum XOpenCTIIncidentsOrdering {
+############## Incident
+enum IncidentsOrdering {
   name
   first_seen
   last_seen
@@ -4173,7 +4304,7 @@ enum XOpenCTIIncidentsOrdering {
   created_at
   updated_at
 }
-enum XOpenCTIIncidentsFilter {
+enum IncidentsFilter {
   name
   aliases
   created
@@ -4183,21 +4314,21 @@ enum XOpenCTIIncidentsFilter {
   markedBy
   labelledBy
 }
-input XOpenCTIIncidentsFiltering {
-  key: XOpenCTIIncidentsFilter!
+input IncidentsFiltering {
+  key: IncidentsFilter!
   values: [String]
   operator: String
   filterMode: FilterMode
 }
-type XOpenCTIIncidentConnection {
+type IncidentConnection {
   pageInfo: PageInfo!
-  edges: [XOpenCTIIncidentEdge]
+  edges: [IncidentEdge]
 }
-type XOpenCTIIncidentEdge {
+type IncidentEdge {
   cursor: String!
-  node: XOpenCTIIncident!
+  node: Incident!
 }
-type XOpenCTIIncident implements BasicObject & StixObject & StixCoreObject & StixDomainObject {
+type Incident implements BasicObject & StixObject & StixCoreObject & StixDomainObject {
   id: ID! # internal_id
   standard_id: String!
   entity_type: String!
@@ -4244,7 +4375,7 @@ type XOpenCTIIncident implements BasicObject & StixObject & StixCoreObject & Sti
   lang: String
   created: DateTime
   modified: DateTime
-  # XOpenCTIIncident
+  # Incident
   name: String!
   description: String
   aliases: [String]
@@ -4258,7 +4389,7 @@ type XOpenCTIIncident implements BasicObject & StixObject & StixCoreObject & Sti
   toStix: String
   editContext: [EditUserContext]
 }
-input XOpenCTIIncidentAddInput {
+input IncidentAddInput {
   stix_id: String
   name: String! @constraint(minLength: 2)
   description: String!
@@ -4299,7 +4430,9 @@ enum StixCyberObservablesFilter {
   labelledBy
   relatedTo
   objectContained
+  containedBy
   hasExternalReference
+  sightedBy
   value
   name
   confidence
@@ -5077,7 +5210,9 @@ type Artifact implements BasicObject & StixObject & StixCoreObject & StixCyberOb
   url: String
   encryption_algorithm: String
   decryption_key: String
+  x_opencti_additional_names: [String]
   # Technical
+  importFiles(first: Int): FileConnection
   creator: User
   toStix: String
   editContext: [EditUserContext]
@@ -5091,6 +5226,7 @@ input ArtifactAddInput {
   url: String
   encryption_algorithm: String
   decryption_key: String
+  x_opencti_additional_names: [String]
 }
 type StixFile implements BasicObject & StixObject & StixCoreObject & StixCyberObservable & HashedObservable {
   id: ID! # internal_id
@@ -6878,7 +7014,7 @@ union StixObjectOrStixRelationship =
   | ThreatActor
   | Tool
   | Vulnerability
-  | XOpenCTIIncident ## Six Cyber Observables
+  | Incident ## Six Cyber Observables
   | AutonomousSystem
   | Directory
   | DomainName
@@ -6933,7 +7069,7 @@ union StixCoreObjectOrStixCoreRelationship =
   | ThreatActor
   | Tool
   | Vulnerability
-  | XOpenCTIIncident ## Six Cyber Observables
+  | Incident ## Six Cyber Observables
   | AutonomousSystem
   | Directory
   | DomainName
@@ -7457,6 +7593,16 @@ type Query {
     orderMode: OrderingMode
     search: String
   ): TaxiiCollectionConnection @auth(for: [TAXIIAPI_SETCOLLECTIONS])
+  task(id: String!): Task @auth(for: [KNOWLEDGE])
+  tasks(
+    first: Int
+    after: ID
+    orderBy: TasksOrdering
+    orderMode: OrderingMode
+    filters: [TasksFiltering]
+    filterMode: FilterMode
+    search: String
+  ): TaskConnection @auth(for: [KNOWLEDGE])
 
   ######## STIX OBJECT ENTITIES
 
@@ -7532,6 +7678,7 @@ type Query {
     filterMode: FilterMode
     search: String
   ): StixDomainObjectConnection @auth(for: [KNOWLEDGE])
+  bookmarks(first: Int, after: ID, types: [String]): StixDomainObjectConnection @auth(for: [KNOWLEDGE])
   stixDomainObjectsExportFiles(first: Int, type: String!): FileConnection @auth(for: [KNOWLEDGE_KNGETEXPORT])
   stixDomainObjectsTimeSeries(
     type: String
@@ -7928,18 +8075,18 @@ type Query {
     search: String
     toStix: Boolean
   ): VulnerabilityConnection @auth(for: [KNOWLEDGE])
-  xOpenCTIIncident(id: String): XOpenCTIIncident @auth(for: [KNOWLEDGE])
-  xOpenCTIIncidents(
+  incident(id: String): Incident @auth(for: [KNOWLEDGE])
+  incidents(
     first: Int
     after: ID
-    orderBy: XOpenCTIIncidentsOrdering
+    orderBy: IncidentsOrdering
     orderMode: OrderingMode
-    filters: [XOpenCTIIncidentsFiltering]
+    filters: [IncidentsFiltering]
     filterMode: FilterMode
     search: String
     toStix: Boolean
-  ): XOpenCTIIncidentConnection @auth(for: [KNOWLEDGE])
-  xOpenCTIIncidentsTimeSeries(
+  ): IncidentConnection @auth(for: [KNOWLEDGE])
+  incidentsTimeSeries(
     objectId: String
     field: String!
     operation: StatsOperation!
@@ -7964,7 +8111,8 @@ type Query {
     toStix: Boolean
   ): StixCyberObservableConnection @auth(for: [KNOWLEDGE])
   stixCyberObservablesExportFiles(first: Int, context: String): FileConnection
-  stixCyberObservablesNumber(types: [String], authorId: String, endDate: DateTime): Number @auth(for: [KNOWLEDGE, EXPLORE])
+  stixCyberObservablesNumber(types: [String], authorId: String, endDate: DateTime): Number
+    @auth(for: [KNOWLEDGE, EXPLORE])
   stixCyberObservablesTimeSeries(type: String): [TimeSeries] @auth(for: [KNOWLEDGE, EXPLORE])
   stixCyberObservablesDistribution(objectId: String, field: String!, operation: String!): [Distribution]
     @auth(for: [KNOWLEDGE, EXPLORE])
@@ -7998,6 +8146,7 @@ type Query {
     toRole: String
     toTypes: [String]
     relationship_type: String
+    relationshipTypes: [String]
     startTimeStart: DateTime
     startTimeStop: DateTime
     stopTimeStart: DateTime
@@ -8024,6 +8173,7 @@ type Query {
     orderBy: StixCoreRelationshipsOrdering
     orderMode: OrderingMode
     elementId: String
+    elementWithTargetTypes: [String]
     fromId: String
     fromRole: String
     fromTypes: [String]
@@ -8504,13 +8654,13 @@ type VulnerabilityEditMutations {
   relationAdd(input: StixMetaRelationshipAddInput): StixMetaRelationship @auth(for: [KNOWLEDGE_KNUPDATE])
   relationDelete(toId: String!, relationship_type: String!): Vulnerability @auth(for: [KNOWLEDGE_KNUPDATE])
 }
-type XOpenCTIIncidentEditMutations {
+type IncidentEditMutations {
   delete: ID @auth(for: [KNOWLEDGE_KNUPDATE_KNDELETE])
-  fieldPatch(input: EditInput, operation: EditOperation): XOpenCTIIncident @auth(for: [KNOWLEDGE_KNUPDATE])
-  contextPatch(input: EditContext): XOpenCTIIncident @auth(for: [KNOWLEDGE_KNUPDATE])
-  contextClean: XOpenCTIIncident @auth(for: [KNOWLEDGE_KNUPDATE])
+  fieldPatch(input: EditInput, operation: EditOperation): Incident @auth(for: [KNOWLEDGE_KNUPDATE])
+  contextPatch(input: EditContext): Incident @auth(for: [KNOWLEDGE_KNUPDATE])
+  contextClean: Incident @auth(for: [KNOWLEDGE_KNUPDATE])
   relationAdd(input: StixMetaRelationshipAddInput): StixMetaRelationship @auth(for: [KNOWLEDGE_KNUPDATE])
-  relationDelete(toId: String!, relationship_type: String!): XOpenCTIIncident @auth(for: [KNOWLEDGE_KNUPDATE])
+  relationDelete(toId: String!, relationship_type: String!): Incident @auth(for: [KNOWLEDGE_KNUPDATE])
 }
 
 ######## STIX CYBER OBSERVABLE ENTITIES
@@ -8524,6 +8674,7 @@ type StixCyberObservableEditMutations {
   relationsAdd(input: StixMetaRelationshipsAddInput): StixCyberObservable @auth(for: [KNOWLEDGE_KNUPDATE])
   relationDelete(toId: String!, relationship_type: String!): StixCyberObservable @auth(for: [KNOWLEDGE_KNUPDATE])
   askEnrichment(connectorId: ID!): Work @auth(for: [KNOWLEDGE_KNENRICHMENT])
+  promote: StixCyberObservable @auth(for: [KNOWLEDGE_KNUPDATE])
 }
 
 ######## STIX RELATIONSHIPS
@@ -8565,12 +8716,17 @@ type Mutation {
   ###### INTERNAL
   deleteImport(fileName: String): Boolean @auth(for: [KNOWLEDGE_KNASKIMPORT])
   uploadImport(file: Upload!): File @auth(for: [KNOWLEDGE_KNASKIMPORT])
-  askJobImport(fileName: ID!): File @auth(for: [KNOWLEDGE_KNASKIMPORT])
+  askJobImport(fileName: ID!, connectorId: String): File @auth(for: [KNOWLEDGE_KNASKIMPORT])
 
   ### WORK
   workAdd(connectorId: String!, friendlyName: String): Work!
     @auth(for: [KNOWLEDGE_KNASKIMPORT, KNOWLEDGE_KNGETEXPORT_KNASKEXPORT])
   workEdit(id: ID!): WorkEditMutations @auth(for: [KNOWLEDGE_KNASKIMPORT, KNOWLEDGE_KNGETEXPORT_KNASKEXPORT])
+
+  ### TASK
+  deleteTask(id: ID!): ID! @auth(for: [KNOWLEDGE_KNUPDATE])
+  listTaskAdd(input: ListTaskAddInput): Task! @auth(for: [KNOWLEDGE_KNUPDATE])
+  queryTaskAdd(input: QueryTaskAddInput): Task! @auth(for: [KNOWLEDGE_KNUPDATE])
 
   ######## INTERNAL OBJECT ENTITIES
   token(input: UserLoginInput): String
@@ -8580,6 +8736,8 @@ type Mutation {
   userAdd(input: UserAddInput): User @auth(for: [SETTINGS_SETACCESSES])
   userEdit(id: ID!): UserEditMutations @auth(for: [SETTINGS_SETACCESSES])
   meEdit(input: EditInput, operation: EditOperation): User @auth
+  bookmarkAdd(id: ID!, type: String!): StixDomainObject @auth(for: [KNOWLEDGE])
+  bookmarkDelete(id: ID!): ID @auth(for: [KNOWLEDGE])
   logout: ID @auth
   roleAdd(input: RoleAddInput): Role @auth(for: [SETTINGS_SETACCESSES])
   sessionKill(id: ID!): ID @auth(for: [SETTINGS_SETACCESSES])
@@ -8684,8 +8842,8 @@ type Mutation {
   toolEdit(id: ID!): ToolEditMutations
   vulnerabilityAdd(input: VulnerabilityAddInput): Vulnerability @auth(for: [KNOWLEDGE_KNUPDATE])
   vulnerabilityEdit(id: ID!): VulnerabilityEditMutations
-  xOpenCTIIncidentAdd(input: XOpenCTIIncidentAddInput): XOpenCTIIncident @auth(for: [KNOWLEDGE_KNUPDATE])
-  xOpenCTIIncidentEdit(id: ID!): XOpenCTIIncidentEditMutations
+  incidentAdd(input: IncidentAddInput): Incident @auth(for: [KNOWLEDGE_KNUPDATE])
+  incidentEdit(id: ID!): IncidentEditMutations
 
   ######## STIX CYBER OBSERVABLE ENTITIES
   stixCyberObservableAdd(
@@ -8741,6 +8899,13 @@ type Mutation {
     filterMode: FilterMode
   ): FileConnection @auth(for: [KNOWLEDGE_KNGETEXPORT_KNASKEXPORT])
   stixCyberObservablesExportPush(file: Upload!, listFilters: String): Boolean
+  artifactImport(
+    file: Upload!
+    x_opencti_description: String
+    createdBy: String
+    objectMarking: [String]
+    objectLabel: [String]
+  ): Artifact
 
   ######## STIX RELATIONSHIPS
 

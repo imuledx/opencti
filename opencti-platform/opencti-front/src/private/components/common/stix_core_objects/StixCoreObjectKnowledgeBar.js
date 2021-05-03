@@ -18,6 +18,7 @@ import {
   DomainOutlined,
   FlagOutlined,
   GroupOutlined,
+  LinkOutlined,
 } from '@material-ui/icons';
 import {
   Gauge,
@@ -33,6 +34,7 @@ import {
   ShieldSearch,
   SourceFork,
   CityVariantOutline,
+  ServerNetwork,
 } from 'mdi-material-ui';
 import inject18n from '../../../../components/i18n';
 
@@ -81,6 +83,18 @@ class StixCoreObjectKnowledgeBar extends Component {
               <Gauge />
             </ListItemIcon>
             <ListItemText primary={t('Overview')} />
+          </MenuItem>
+          <MenuItem
+            component={Link}
+            to={`${stixCoreObjectLink}/related`}
+            selected={location.pathname === `${stixCoreObjectLink}/related`}
+            dense={false}
+            classes={{ root: classes.item }}
+          >
+            <ListItemIcon style={{ minWidth: 35 }}>
+              <LinkOutlined />
+            </ListItemIcon>
+            <ListItemText primary={t('Related entities')} />
           </MenuItem>
           {includes('cities', availableSections) ? (
             <MenuItem
@@ -457,7 +471,7 @@ class StixCoreObjectKnowledgeBar extends Component {
                 classes={{ root: classes.item }}
               >
                 <ListItemIcon style={{ minWidth: 35 }}>
-                  <BugReportOutlined />
+                  <ServerNetwork />
                 </ListItemIcon>
                 <ListItemText primary={t('Infrastructures')} />
               </MenuItem>

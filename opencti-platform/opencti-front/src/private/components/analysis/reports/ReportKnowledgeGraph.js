@@ -162,7 +162,7 @@ const reportKnowledgeGraphStixCoreObjectQuery = graphql`
       ... on Vulnerability {
         name
       }
-      ... on XOpenCTIIncident {
+      ... on Incident {
         name
         first_seen
         last_seen
@@ -288,7 +288,13 @@ class ReportKnowledgeGraphComponent extends Component {
       if (this.zoom && this.zoom.k && !this.state.mode3D) {
         this.graph.current.zoom(this.zoom.k, 400);
       } else {
-        setTimeout(() => this.graph.current.zoomToFit(0, 150), 1200);
+        const currentContext = this;
+        setTimeout(
+          () => currentContext.graph
+            && currentContext.graph.current
+            && currentContext.graph.current.zoomToFit(0, 150),
+          1200,
+        );
       }
       this.initialized = true;
     }
@@ -423,11 +429,7 @@ class ReportKnowledgeGraphComponent extends Component {
   }
 
   handleZoomToFit() {
-    if (this.graphObjects.length === 1) {
-      this.graph.current.zoomToFit(400, 300);
-    } else {
-      this.graph.current.zoomToFit(400, 150);
-    }
+    this.graph.current.zoomToFit(400, 150);
   }
 
   handleZoomEnd(zoom) {
@@ -520,7 +522,7 @@ class ReportKnowledgeGraphComponent extends Component {
         ),
       },
       () => {
-        setTimeout(() => this.handleZoomToFit(), 1000);
+        setTimeout(() => this.handleZoomToFit(), 1500);
       },
     );
   }
@@ -606,25 +608,27 @@ class ReportKnowledgeGraphComponent extends Component {
     R.forEach((n) => {
       fetchQuery(reportKnowledgeGraphCheckRelationQuery, {
         id: n.id,
-      }).then((data) => {
-        if (data.stixCoreRelationship.reports.edges.length === 1) {
-          commitMutation({
-            mutation: stixCoreRelationshipEditionDeleteMutation,
-            variables: {
-              id: n.id,
-            },
-          });
-        } else {
-          commitMutation({
-            mutation: reportKnowledgeGraphtMutationRelationDeleteMutation,
-            variables: {
-              id: this.props.report.id,
-              toId: n.id,
-              relationship_type: 'object',
-            },
-          });
-        }
-      });
+      })
+        .toPromise()
+        .then((data) => {
+          if (data.stixCoreRelationship.reports.edges.length === 1) {
+            commitMutation({
+              mutation: stixCoreRelationshipEditionDeleteMutation,
+              variables: {
+                id: n.id,
+              },
+            });
+          } else {
+            commitMutation({
+              mutation: reportKnowledgeGraphtMutationRelationDeleteMutation,
+              variables: {
+                id: this.props.report.id,
+                toId: n.id,
+                relationship_type: 'object',
+              },
+            });
+          }
+        });
     }, this.selectedLinks);
     this.graphObjects = R.filter(
       (n) => !R.includes(n.id, selectedLinksIds),
@@ -690,28 +694,30 @@ class ReportKnowledgeGraphComponent extends Component {
     setTimeout(() => {
       fetchQuery(reportKnowledgeGraphStixCoreObjectQuery, {
         id: entityId,
-      }).then((data) => {
-        const { stixCoreObject } = data;
-        this.graphObjects = R.map(
-          (n) => (n.id === stixCoreObject.id ? stixCoreObject : n),
-          this.graphObjects,
-        );
-        this.graphData = buildGraphData(
-          this.graphObjects,
-          decodeGraphData(this.props.report.x_opencti_graph_data),
-          this.props.t,
-        );
-        this.setState({
-          graphData: applyFilters(
-            this.graphData,
-            this.state.stixCoreObjectsTypes,
-            this.state.markedBy,
-            this.state.createdBy,
-            ignoredStixCoreObjectsTypes,
-            this.state.selectedTimeRangeInterval,
-          ),
+      })
+        .toPromise()
+        .then((data) => {
+          const { stixCoreObject } = data;
+          this.graphObjects = R.map(
+            (n) => (n.id === stixCoreObject.id ? stixCoreObject : n),
+            this.graphObjects,
+          );
+          this.graphData = buildGraphData(
+            this.graphObjects,
+            decodeGraphData(this.props.report.x_opencti_graph_data),
+            this.props.t,
+          );
+          this.setState({
+            graphData: applyFilters(
+              this.graphData,
+              this.state.stixCoreObjectsTypes,
+              this.state.markedBy,
+              this.state.createdBy,
+              ignoredStixCoreObjectsTypes,
+              this.state.selectedTimeRangeInterval,
+            ),
+          });
         });
-      });
     }, 1500);
   }
 
@@ -719,28 +725,30 @@ class ReportKnowledgeGraphComponent extends Component {
     setTimeout(() => {
       fetchQuery(reportKnowledgeGraphStixCoreRelationshipQuery, {
         id: relationId,
-      }).then((data) => {
-        const { stixCoreRelationship } = data;
-        this.graphObjects = R.map(
-          (n) => (n.id === stixCoreRelationship.id ? stixCoreRelationship : n),
-          this.graphObjects,
-        );
-        this.graphData = buildGraphData(
-          this.graphObjects,
-          decodeGraphData(this.props.report.x_opencti_graph_data),
-          this.props.t,
-        );
-        this.setState({
-          graphData: applyFilters(
-            this.graphData,
-            this.state.stixCoreObjectsTypes,
-            this.state.markedBy,
-            this.state.createdBy,
-            ignoredStixCoreObjectsTypes,
-            this.state.selectedTimeRangeInterval,
-          ),
+      })
+        .toPromise()
+        .then((data) => {
+          const { stixCoreRelationship } = data;
+          this.graphObjects = R.map(
+            (n) => (n.id === stixCoreRelationship.id ? stixCoreRelationship : n),
+            this.graphObjects,
+          );
+          this.graphData = buildGraphData(
+            this.graphObjects,
+            decodeGraphData(this.props.report.x_opencti_graph_data),
+            this.props.t,
+          );
+          this.setState({
+            graphData: applyFilters(
+              this.graphData,
+              this.state.stixCoreObjectsTypes,
+              this.state.markedBy,
+              this.state.createdBy,
+              ignoredStixCoreObjectsTypes,
+              this.state.selectedTimeRangeInterval,
+            ),
+          });
         });
-      });
     }, 1500);
   }
 
@@ -1158,7 +1166,7 @@ const ReportKnowledgeGraph = createFragmentContainer(
               ... on Vulnerability {
                 name
               }
-              ... on XOpenCTIIncident {
+              ... on Incident {
                 name
                 first_seen
                 last_seen

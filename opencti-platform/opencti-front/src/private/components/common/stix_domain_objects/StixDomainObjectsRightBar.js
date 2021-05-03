@@ -10,6 +10,9 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import Checkbox from '@material-ui/core/Checkbox';
 import Drawer from '@material-ui/core/Drawer';
+import Tooltip from '@material-ui/core/Tooltip';
+import IconButton from '@material-ui/core/IconButton';
+import { FilterOffOutline } from 'mdi-material-ui';
 import inject18n from '../../../../components/i18n';
 import { QueryRenderer } from '../../../../relay/environment';
 import { stixDomainObjectsLinesSubTypesQuery } from './StixDomainObjectsLines';
@@ -21,10 +24,7 @@ const styles = (theme) => ({
     padding: '0 0 20px 0',
     position: 'fixed',
     backgroundColor: theme.palette.navAlt.background,
-    transition: theme.transitions.create('right', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
+    zIndex: 1100,
   },
   drawerPaperExports: {
     minHeight: '100vh',
@@ -52,7 +52,12 @@ const styles = (theme) => ({
 class StixDomainObjectsRightBar extends Component {
   render() {
     const {
-      classes, t, types = [], handleToggle, openExports,
+      classes,
+      t,
+      types = [],
+      handleToggle,
+      handleClear,
+      openExports,
     } = this.props;
     return (
       <Drawer
@@ -80,6 +85,15 @@ class StixDomainObjectsRightBar extends Component {
                   subheader={
                     <ListSubheader component="div">
                       {t('Entity types')}
+                      <Tooltip title={t('Clear filters')}>
+                        <IconButton
+                          onClick={handleClear.bind(this)}
+                          disabled={types.length === 0}
+                          color="primary"
+                        >
+                          <FilterOffOutline fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </ListSubheader>
                   }
                 >
@@ -113,6 +127,7 @@ class StixDomainObjectsRightBar extends Component {
 StixDomainObjectsRightBar.propTypes = {
   types: PropTypes.array,
   handleToggle: PropTypes.func,
+  handleClear: PropTypes.func,
   classes: PropTypes.object,
   t: PropTypes.func,
   openExports: PropTypes.bool,

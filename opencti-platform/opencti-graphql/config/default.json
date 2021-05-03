@@ -2,11 +2,24 @@
   "app": {
     "port": 4000,
     "https_cert": {
+      "ca": [],
       "key": null,
-      "crt": null
+      "crt": null,
+      "reject_unauthorized": true
     },
-    "logs": "./logs",
-    "logs_level": "info",
+    "app_logs": {
+      "logs_level": "info",
+      "logs_files": true,
+      "logs_console": true,
+      "logs_max_files": 7,
+      "logs_directory": "./logs"
+    },
+    "audit_logs": {
+      "logs_files": true,
+      "logs_console": true,
+      "logs_max_files": 7,
+      "logs_directory": "./logs"
+    },
     "request_timeout": 120000,
     "session_timeout": 1200000,
     "session_manager": "shared",
@@ -31,12 +44,18 @@
       "token": "ChangeMe"
     }
   },
+  "task_scheduler": {
+    "lock_key": "task_manager_lock",
+    "interval": 10000
+  },
   "expiration_scheduler": {
     "lock_key": "expired_manager_lock",
     "interval": 300000
   },
   "redis": {
     "hostname": "localhost",
+    "use_ssl": false,
+    "ca": [],
     "port": 6379,
     "trimming": 0
   },
@@ -56,6 +75,8 @@
   },
   "rabbitmq": {
     "hostname": "localhost",
+    "use_ssl": false,
+    "ca": [],
     "port": 5672,
     "port_management": 15672,
     "management_ssl": false,

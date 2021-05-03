@@ -1,10 +1,13 @@
 import * as Minio from 'minio';
+import * as He from 'he';
 import { assoc, concat, map, sort } from 'ramda';
 import querystring from 'querystring';
-import conf, { logger } from '../config/conf';
+import conf, { logApp, logAudit } from '../config/conf';
 import { buildPagination } from './utils';
 import { loadExportWorksAsProgressFiles, deleteWorkForFile } from '../domain/work';
 import { sinceNowInMinutes } from '../utils/format';
+import { DatabaseError } from '../config/errors';
+import { UPLOAD_ACTION } from '../config/audit';
 
 const bucketName = conf.get('minio:bucket_name') || 'opencti-bucket';
 const bucketRegion = conf.get('minio:bucket_region') || 'us-east-1';
@@ -40,7 +43,7 @@ export const isStorageAlive = () => {
 };
 
 export const deleteFile = async (user, id) => {
-  logger.debug(`[MINIO] delete file ${id} by ${user.user_email}`);
+  logApp.debug(`[MINIO] delete file ${id} by ${user.user_email}`);
   await minioClient.removeObject(bucketName, id);
   await deleteWorkForFile(user, id);
   return true;
@@ -50,12 +53,12 @@ export const downloadFile = (id) => {
   try {
     return minioClient.getObject(bucketName, id);
   } catch (err) {
-    logger.info(`[OPENCTI] Cannot retrieve file on MinIO`, { error: err });
+    logApp.info(`[OPENCTI] Cannot retrieve file on MinIO`, { error: err });
     return null;
   }
 };
 
-export const loadFile = async (filename) => {
+export const loadFile = async (user, filename) => {
   try {
     const stat = await minioClient.statObject(bucketName, filename);
     return {
@@ -69,17 +72,11 @@ export const loadFile = async (filename) => {
       uploadStatus: 'complete',
     };
   } catch (err) {
-    logger.info(`[OPENCTI] Cannot retrieve file on MinIO`, { error: err });
-    return null;
+    throw DatabaseError('File not found', { user_id: user.id, filename });
   }
 };
 
-const htmlDecode = (str) => {
-  return str.replace(/&#(\d+);/g, (match, dec) => {
-    return String.fromCharCode(dec);
-  });
-};
-const rawFilesListing = (directory) => {
+const rawFilesListing = (user, directory) => {
   return new Promise((resolve, reject) => {
     const files = [];
     const stream = minioClient.listObjectsV2(bucketName, directory);
@@ -90,15 +87,15 @@ const rawFilesListing = (directory) => {
     });
     /* istanbul ignore next */
     stream.on('error', (e) => {
-      logger.error('[MINIO] Error listing files', { error: e });
+      logApp.error('[MINIO] Error listing files', { error: e });
       reject(e);
     });
     stream.on('end', () => resolve(files));
   }).then((files) => {
     return Promise.all(
       map((elem) => {
-        const filename = htmlDecode(elem.name);
-        return loadFile(filename);
+        const filename = He.decode(elem.name);
+        return loadFile(user, filename);
       }, files)
     );
   });
@@ -106,27 +103,35 @@ const rawFilesListing = (directory) => {
 
 export const upload = async (user, path, file, metadata = {}) => {
   const { createReadStream, filename, mimetype, encoding } = await file;
+  logAudit.info(user, UPLOAD_ACTION, { path, filename, metadata });
   const escapeName = querystring.escape(filename);
   const internalMeta = { filename: escapeName, mimetype, encoding };
   const fileMeta = { ...metadata, ...internalMeta };
   const fileDirName = `${path}/${filename}`;
-  logger.debug(`[MINIO] Upload file ${fileDirName} by ${user.user_email}`);
+  logApp.debug(`[MINIO] Upload file ${fileDirName} by ${user.user_email}`);
   // Upload the file in the storage
   return new Promise((resolve, reject) => {
     return minioClient.putObject(bucketName, fileDirName, createReadStream(), null, fileMeta, (err) => {
       if (err) return reject(err);
-      return resolve(loadFile(fileDirName));
+      return resolve(loadFile(user, fileDirName));
     });
   });
 };
 
 export const filesListing = async (user, first, path) => {
-  const files = await rawFilesListing(path);
+  const files = await rawFilesListing(user, path);
   const inExport = await loadExportWorksAsProgressFiles(user, path);
   const allFiles = concat(inExport, files);
   const sortedFiles = sort((a, b) => b.lastModified - a.lastModified, allFiles);
   const fileNodes = map((f) => ({ node: f }), sortedFiles);
   return buildPagination(first, null, fileNodes, allFiles.length);
+};
+
+export const deleteAllFiles = async (user, path) => {
+  const files = await rawFilesListing(user, path);
+  const inExport = await loadExportWorksAsProgressFiles(user, path);
+  const allFiles = concat(inExport, files);
+  return Promise.all(allFiles.map((file) => deleteFile(user, file.id)));
 };
 
 export const getMinIOVersion = () => {
@@ -137,7 +142,7 @@ export const getMinIOVersion = () => {
     minioClient.makeRequest({ method: 'HEAD', bucketName }, '', 200, '', true, (err, response) => {
       /* istanbul ignore if */
       if (err) {
-        logger.error('[MINIO] Error requesting server version: ', { error: err });
+        logApp.error('[MINIO] Error requesting server version: ', { error: err });
         resolve('Disconnected');
         return;
       }
@@ -147,7 +152,7 @@ export const getMinIOVersion = () => {
         const version = serverHeader.substring(serverHeaderPrefix.length);
         resolve(version);
       } else {
-        // logger.error(`[MINIO] Unexpected Server header`, { headers: serverHeader });
+        // logApp.error(`[MINIO] Unexpected Server header`, { headers: serverHeader });
         resolve('-');
       }
     });

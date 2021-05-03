@@ -151,7 +151,7 @@ const investigationGraphStixCoreObjectQuery = graphql`
       ... on Vulnerability {
         name
       }
-      ... on XOpenCTIIncident {
+      ... on Incident {
         name
         first_seen
         last_seen
@@ -404,7 +404,7 @@ const investigationGraphStixRelationshipsQuery = graphql`
             ... on Vulnerability {
               name
             }
-            ... on XOpenCTIIncident {
+            ... on Incident {
               name
               first_seen
               last_seen
@@ -592,7 +592,7 @@ const investigationGraphStixRelationshipsQuery = graphql`
             ... on Vulnerability {
               name
             }
-            ... on XOpenCTIIncident {
+            ... on Incident {
               name
               first_seen
               last_seen
@@ -749,7 +749,13 @@ class InvestigationGraphComponent extends Component {
       if (this.zoom && this.zoom.k && !this.state.mode3D) {
         this.graph.current.zoom(this.zoom.k, 400);
       } else {
-        setTimeout(() => this.graph.current.zoomToFit(0, 150), 1200);
+        const currentContext = this;
+        setTimeout(
+          () => currentContext.graph
+            && currentContext.graph.current
+            && currentContext.graph.current.zoomToFit(0, 150),
+          1200,
+        );
       }
       this.initialized = true;
     }
@@ -889,11 +895,7 @@ class InvestigationGraphComponent extends Component {
   }
 
   handleZoomToFit() {
-    if (this.graphObjects.length === 1) {
-      this.graph.current.zoomToFit(400, 300);
-    } else {
-      this.graph.current.zoomToFit(400, 150);
-    }
+    this.graph.current.zoomToFit(400, 150);
   }
 
   handleZoomEnd(zoom) {
@@ -986,7 +988,7 @@ class InvestigationGraphComponent extends Component {
         ),
       },
       () => {
-        setTimeout(() => this.handleZoomToFit(), 1000);
+        setTimeout(() => this.handleZoomToFit(), 1500);
       },
     );
   }
@@ -1108,28 +1110,30 @@ class InvestigationGraphComponent extends Component {
     setTimeout(() => {
       fetchQuery(investigationGraphStixCoreObjectQuery, {
         id: entityId,
-      }).then((data) => {
-        const { stixCoreObject } = data;
-        this.graphObjects = R.map(
-          (n) => (n.id === stixCoreObject.id ? stixCoreObject : n),
-          this.graphObjects,
-        );
-        this.graphData = buildGraphData(
-          this.graphObjects,
-          decodeGraphData(this.props.workspace.graph_data),
-          this.props.t,
-        );
-        this.setState({
-          graphData: applyFilters(
-            this.graphData,
-            this.state.stixCoreObjectsTypes,
-            this.state.markedBy,
-            this.state.createdBy,
-            [],
-            this.state.selectedTimeRangeInterval,
-          ),
+      })
+        .toPromise()
+        .then((data) => {
+          const { stixCoreObject } = data;
+          this.graphObjects = R.map(
+            (n) => (n.id === stixCoreObject.id ? stixCoreObject : n),
+            this.graphObjects,
+          );
+          this.graphData = buildGraphData(
+            this.graphObjects,
+            decodeGraphData(this.props.workspace.graph_data),
+            this.props.t,
+          );
+          this.setState({
+            graphData: applyFilters(
+              this.graphData,
+              this.state.stixCoreObjectsTypes,
+              this.state.markedBy,
+              this.state.createdBy,
+              [],
+              this.state.selectedTimeRangeInterval,
+            ),
+          });
         });
-      });
     }, 1500);
   }
 
@@ -1137,28 +1141,30 @@ class InvestigationGraphComponent extends Component {
     setTimeout(() => {
       fetchQuery(investigationGraphStixCoreRelationshipQuery, {
         id: relationId,
-      }).then((data) => {
-        const { stixCoreRelationship } = data;
-        this.graphObjects = R.map(
-          (n) => (n.id === stixCoreRelationship.id ? stixCoreRelationship : n),
-          this.graphObjects,
-        );
-        this.graphData = buildGraphData(
-          this.graphObjects,
-          decodeGraphData(this.props.workspace.graph_data),
-          this.props.t,
-        );
-        this.setState({
-          graphData: applyFilters(
-            this.graphData,
-            this.state.stixCoreObjectsTypes,
-            this.state.markedBy,
-            this.state.createdBy,
-            [],
-            this.state.selectedTimeRangeInterval,
-          ),
+      })
+        .toPromise()
+        .then((data) => {
+          const { stixCoreRelationship } = data;
+          this.graphObjects = R.map(
+            (n) => (n.id === stixCoreRelationship.id ? stixCoreRelationship : n),
+            this.graphObjects,
+          );
+          this.graphData = buildGraphData(
+            this.graphObjects,
+            decodeGraphData(this.props.workspace.graph_data),
+            this.props.t,
+          );
+          this.setState({
+            graphData: applyFilters(
+              this.graphData,
+              this.state.stixCoreObjectsTypes,
+              this.state.markedBy,
+              this.state.createdBy,
+              [],
+              this.state.selectedTimeRangeInterval,
+            ),
+          });
         });
-      });
     }, 1500);
   }
 
@@ -1199,18 +1205,20 @@ class InvestigationGraphComponent extends Component {
             filters.entity_type === 'All' ? null : [filters.entity_type],
           count: parseInt(filters.limit, 10),
         },
-      ).then((data) => {
-        const currentElementsIds = R.map((k) => k.id, this.graphObjects);
-        const newNodes = R.pipe(
-          R.map((k) => (k.node.from.id === n ? k.node.to : k.node.from)),
-          R.filter((k) => !currentElementsIds.includes(k.id)),
-        )(data.stixRelationships.edges);
-        const newRelationships = R.pipe(
-          R.map((k) => k.node),
-          R.filter((k) => !currentElementsIds.includes(k.id)),
-        )(data.stixRelationships.edges);
-        return [...newNodes, ...newRelationships];
-      });
+      )
+        .toPromise()
+        .then((data) => {
+          const currentElementsIds = R.map((k) => k.id, this.graphObjects);
+          const newNodes = R.pipe(
+            R.map((k) => (k.node.from.id === n ? k.node.to : k.node.from)),
+            R.filter((k) => !currentElementsIds.includes(k.id)),
+          )(data.stixRelationships.edges);
+          const newRelationships = R.pipe(
+            R.map((k) => k.node),
+            R.filter((k) => !currentElementsIds.includes(k.id)),
+          )(data.stixRelationships.edges);
+          return [...newNodes, ...newRelationships];
+        });
       newElementsIds = [...R.map((k) => k.id, newElements), ...newElementsIds];
       this.graphObjects = [...newElements, ...this.graphObjects];
     }
@@ -1652,7 +1660,7 @@ const InvestigationGraph = createFragmentContainer(
               ... on Vulnerability {
                 name
               }
-              ... on XOpenCTIIncident {
+              ... on Incident {
                 name
                 first_seen
                 last_seen

@@ -39,7 +39,7 @@ export const ENTITY_TYPE_MALWARE = 'Malware';
 export const ENTITY_TYPE_THREAT_ACTOR = 'Threat-Actor';
 export const ENTITY_TYPE_TOOL = 'Tool';
 export const ENTITY_TYPE_VULNERABILITY = 'Vulnerability';
-export const ENTITY_TYPE_X_OPENCTI_INCIDENT = 'X-OpenCTI-Incident';
+export const ENTITY_TYPE_INCIDENT = 'Incident';
 
 const STIX_DOMAIN_OBJECT_CONTAINERS = [
   ENTITY_TYPE_CONTAINER_NOTE,
@@ -92,7 +92,7 @@ const STIX_DOMAIN_OBJECTS = [
   ENTITY_TYPE_THREAT_ACTOR,
   ENTITY_TYPE_TOOL,
   ENTITY_TYPE_VULNERABILITY,
-  ENTITY_TYPE_X_OPENCTI_INCIDENT,
+  ENTITY_TYPE_INCIDENT,
 ];
 schemaTypes.register(ABSTRACT_STIX_DOMAIN_OBJECT, STIX_DOMAIN_OBJECTS);
 export const isStixDomainObject = (type) =>
@@ -111,7 +111,7 @@ const STIX_DOMAIN_OBJECT_ALIASED = [
   ENTITY_TYPE_MALWARE,
   ENTITY_TYPE_THREAT_ACTOR,
   ENTITY_TYPE_TOOL,
-  ENTITY_TYPE_X_OPENCTI_INCIDENT,
+  ENTITY_TYPE_INCIDENT,
 ];
 export const isStixObjectAliased = (type) =>
   R.includes(type, STIX_DOMAIN_OBJECT_ALIASED) || isStixDomainObjectIdentity(type) || isStixDomainObjectLocation(type);
@@ -128,6 +128,7 @@ export const stixDomainObjectOptions = {
     markedBy: `${REL_INDEX_PREFIX}${RELATION_OBJECT_MARKING}.internal_id`,
     labelledBy: `${REL_INDEX_PREFIX}${RELATION_OBJECT_LABEL}.internal_id`,
     objectContains: `${REL_INDEX_PREFIX}${RELATION_OBJECT}.internal_id`,
+    containedBy: `${REL_INDEX_PREFIX}${RELATION_OBJECT}.internal_id`,
     hasExternalReference: `${REL_INDEX_PREFIX}${RELATION_EXTERNAL_REFERENCE}.internal_id`,
     indicates: `${REL_INDEX_PREFIX}indicates.internal_id`,
   },
@@ -191,7 +192,7 @@ export const stixDomainObjectFieldsToBeUpdated = {
     'x_opencti_integrity_impact',
     'x_opencti_availability_impact',
   ],
-  [ENTITY_TYPE_X_OPENCTI_INCIDENT]: ['name', 'revoked', 'description', 'first_seen', 'last_seen', 'objective'],
+  [ENTITY_TYPE_INCIDENT]: ['name', 'revoked', 'description', 'first_seen', 'last_seen', 'objective'],
 };
 
 export const stixDomainObjectsAttributes = {
@@ -751,7 +752,7 @@ export const stixDomainObjectsAttributes = {
     'x_opencti_integrity_impact',
     'x_opencti_availability_impact',
   ],
-  [ENTITY_TYPE_X_OPENCTI_INCIDENT]: [
+  [ENTITY_TYPE_INCIDENT]: [
     'internal_id',
     'standard_id',
     'entity_type',

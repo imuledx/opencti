@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import React, { Component } from 'react';
 import * as PropTypes from 'prop-types';
-import { compose, differenceWith, propOr } from 'ramda';
+import * as R from 'ramda';
 import { withStyles } from '@material-ui/core/styles';
 import {
   AutoSizer,
@@ -32,21 +32,27 @@ class ListLinesContent extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const diff = differenceWith(
+    const diff = R.symmetricDifferenceWith(
       (x, y) => x.node.id === y.node.id,
       this.props.dataList,
       prevProps.dataList,
     );
+    const diffBookmark = R.symmetricDifferenceWith(
+      (x, y) => x.node.id === y.node.id,
+      this.props.bookmarkList || [],
+      prevProps.bookmarkList || [],
+    );
     let selection = false;
-    if (this.props.selectedElements) {
-      if (
-        Object.keys(this.props.selectedElements).length
-        !== Object.keys(propOr({}, 'selectedElements', prevProps)).length
-      ) {
-        selection = true;
-      }
+    if (
+      Object.keys(this.props.selectedElements || {}).length
+      !== Object.keys(prevProps.selectedElements || {}).length
+    ) {
+      selection = true;
     }
-    if (diff.length > 0 || selection) {
+    if (this.props.selectAll !== prevProps.selectAll) {
+      selection = true;
+    }
+    if (diff.length > 0 || diffBookmark.length > 0 || selection) {
       this.listRef.forceUpdateGrid();
     }
   }
@@ -96,6 +102,7 @@ class ListLinesContent extends Component {
       me,
       onLabelClick,
       selectedElements,
+      selectAll,
       onToggleEntity,
       connectionKey,
       isTo,
@@ -122,6 +129,7 @@ class ListLinesContent extends Component {
           me,
           onLabelClick,
           selectedElements,
+          selectAll,
           onToggleEntity,
           connectionKey,
           isTo,
@@ -206,8 +214,9 @@ ListLinesContent.propTypes = {
   onLabelClick: PropTypes.func,
   selectedElements: PropTypes.object,
   onToggleEntity: PropTypes.func,
+  selectAll: PropTypes.bool,
   connectionKey: PropTypes.string,
   isTo: PropTypes.bool,
 };
 
-export default compose(inject18n, withStyles(styles))(ListLinesContent);
+export default R.compose(inject18n, withStyles(styles))(ListLinesContent);

@@ -30,7 +30,12 @@ class StixCyberObservableKnowledgeEntities extends Component {
       orderAsc: false,
       searchTerm: '',
       view: 'lines',
+      relationReversed: false,
     };
+  }
+
+  handleReverseRelation() {
+    this.setState({ relationReversed: !this.state.relationReversed });
   }
 
   handleSort(field, orderAsc) {
@@ -106,17 +111,11 @@ class StixCyberObservableKnowledgeEntities extends Component {
 
   render() {
     const {
-      view, sortBy, orderAsc, searchTerm,
+      view, sortBy, orderAsc, searchTerm, relationReversed,
     } = this.state;
-    const {
-      classes,
-      t,
-      entityId,
-      relationship_type: relationshipType,
-    } = this.props;
+    const { classes, t, entityId } = this.props;
     const paginationOptions = {
-      fromId: entityId,
-      relationship_type: relationshipType,
+      elementId: entityId,
       search: searchTerm,
       orderBy: sortBy,
       orderMode: orderAsc ? 'asc' : 'desc',
@@ -128,18 +127,12 @@ class StixCyberObservableKnowledgeEntities extends Component {
         </Typography>
         <StixCoreRelationshipCreationFromEntity
           paginationOptions={paginationOptions}
+          handleReverseRelation={this.handleReverseRelation.bind(this)}
           entityId={entityId}
           variant="inLine"
-          isRelationReversed={false}
-          paddingRight={true}
-          targetStixDomainObjectTypes={[
-            'Region',
-            'Country',
-            'City',
-            'Position',
-            'Organization',
-            'Individual',
-          ]}
+          isRelationReversed={relationReversed}
+          targetStixDomainObjectTypes={['Stix-Domain-Object']}
+          targetStixCyberObservableTypes={['Stix-Cyber-Observable']}
         />
         <div className="clearfix" />
         <Paper classes={{ root: classes.paper }} elevation={2}>

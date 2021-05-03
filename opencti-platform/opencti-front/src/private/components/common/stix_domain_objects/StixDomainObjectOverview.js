@@ -12,7 +12,7 @@ import inject18n from '../../../../components/i18n';
 import ItemAuthor from '../../../../components/ItemAuthor';
 import ItemConfidence from '../../../../components/ItemConfidence';
 import ItemCreator from '../../../../components/ItemCreator';
-import ItemRevoked from '../../../../components/ItemRevoked';
+import ItemBoolean from '../../../../components/ItemBoolean';
 import StixCoreObjectLabelsView from '../stix_core_objects/StixCoreObjectLabelsView';
 import ItemPatternType from '../../../../components/ItemPatternType';
 import ItemMarkings from '../../../../components/ItemMarkings';
@@ -172,9 +172,10 @@ class StixDomainObjectOverview extends Component {
                   >
                     {t('Revoked')}
                   </Typography>
-                  <ItemRevoked
+                  <ItemBoolean
                     status={stixDomainObject.revoked}
                     label={stixDomainObject.revoked ? t('Yes') : t('No')}
+                    reverse={true}
                   />
                 </div>
               ) : (
@@ -210,7 +211,7 @@ class StixDomainObjectOverview extends Component {
                 {t('Creator')}
               </Typography>
               <ItemCreator creator={stixDomainObject.creator} />
-              {stixDomainObject.objectMarking ? (
+              {stixDomainObject.objectMarking && (
                 <div>
                   <Typography
                     variant="h3"
@@ -219,13 +220,12 @@ class StixDomainObjectOverview extends Component {
                   >
                     {t('Revoked')}
                   </Typography>
-                  <ItemRevoked
+                  <ItemBoolean
                     status={stixDomainObject.revoked}
                     label={stixDomainObject.revoked ? t('Yes') : t('No')}
+                    reverse={true}
                   />
                 </div>
-              ) : (
-                ''
               )}
             </Grid>
           </Grid>

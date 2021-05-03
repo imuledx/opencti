@@ -25,6 +25,7 @@ import {
 } from '../../../../relay/environment';
 import ConnectorWorks, { connectorWorksQuery } from './ConnectorWorks';
 import { truncate } from '../../../../utils/String';
+import Loader from '../../../../components/Loader';
 
 const interval$ = interval(FIVE_SECONDS);
 
@@ -42,6 +43,7 @@ const styles = () => ({
   },
   title: {
     float: 'left',
+    marginRight: 30,
     textTransform: 'uppercase',
   },
   popover: {
@@ -177,6 +179,10 @@ class ConnectorComponent extends Component {
           >
             {connector.name}
           </Typography>
+          <ItemBoolean
+            status={connector.active}
+            label={connector.active ? t('Active') : t('Inactive')}
+          />
           <div className={classes.popover}>
             <Security needs={[MODULES_MODMANAGE]}>
               <Tooltip title={t('Reset the connector state')}>
@@ -233,20 +239,30 @@ class ConnectorComponent extends Component {
                 </Grid>
                 <Grid item={true} xs={6}>
                   <Typography variant="h3" gutterBottom={true}>
-                    {t('Active')}
+                    {t('Only contextual')}
                   </Typography>
                   <ItemBoolean
-                    status={connector.active}
-                    label={connector.active ? t('TRUE') : t('FALSE')}
+                    status={
+                      connector.connector_type === 'INTERNAL_ENRICHMENT'
+                      || connector.connector_type === 'INTERNAL_IMPORT_FILE'
+                        ? connector.auto
+                        : null
+                    }
+                    label={connector.only_contextual ? t('Yes') : t('No')}
                   />
                 </Grid>
                 <Grid item={true} xs={6}>
                   <Typography variant="h3" gutterBottom={true}>
-                    {t('Automatic')}
+                    {t('Automatic trigger')}
                   </Typography>
                   <ItemBoolean
-                    status={connector.auto}
-                    label={connector.auto ? t('TRUE') : t('FALSE')}
+                    status={
+                      connector.connector_type === 'INTERNAL_ENRICHMENT'
+                      || connector.connector_type === 'INTERNAL_IMPORT_FILE'
+                        ? connector.auto
+                        : null
+                    }
+                    label={connector.auto ? t('Yes') : t('No')}
                   />
                 </Grid>
                 <Grid item={true} xs={12}>
@@ -304,7 +320,7 @@ class ConnectorComponent extends Component {
                 <ConnectorWorks data={props} options={optionsInProgress} />
               );
             }
-            return <div> &nbsp; </div>;
+            return <Loader variant="inElement" />;
           }}
         />
         <Typography variant="h4" gutterBottom={true} style={{ marginTop: 35 }}>
@@ -317,7 +333,7 @@ class ConnectorComponent extends Component {
             if (props) {
               return <ConnectorWorks data={props} options={optionsFinished} />;
             }
-            return <div> &nbsp; </div>;
+            return <Loader variant="inElement" />;
           }}
         />
       </div>
@@ -350,6 +366,7 @@ const Connector = createRefetchContainer(
         name
         active
         auto
+        only_contextual
         connector_type
         connector_scope
         connector_state

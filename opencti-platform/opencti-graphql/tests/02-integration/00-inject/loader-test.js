@@ -6,7 +6,6 @@ import { execPython3 } from '../../../src/python/pythonBridge';
 
 describe('Database provision', () => {
   const importOpts = [API_URI, API_TOKEN, '/tests/data/DATA-TEST-STIX2_v2.json'];
-
   it(
     'should platform init',
     () => {
@@ -14,7 +13,6 @@ describe('Database provision', () => {
     },
     FIVE_MINUTES
   );
-
   it(
     'Should import creation succeed',
     async () => {
@@ -26,7 +24,6 @@ describe('Database provision', () => {
     },
     FIVE_MINUTES
   );
-
   // Python lib is fixed but we need to wait for a new release
   it(
     'Should import update succeed',

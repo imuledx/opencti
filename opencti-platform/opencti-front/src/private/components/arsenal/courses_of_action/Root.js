@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import * as PropTypes from 'prop-types';
-import { Route, withRouter } from 'react-router-dom';
+import { Route, Switch, withRouter } from 'react-router-dom';
 import graphql from 'babel-plugin-relay/macro';
 import {
   QueryRenderer,
@@ -13,6 +13,8 @@ import FileManager from '../../common/files/FileManager';
 import CourseOfActionPopover from './CourseOfActionPopover';
 import Loader from '../../../../components/Loader';
 import StixCoreObjectHistory from '../../common/stix_core_objects/StixCoreObjectHistory';
+import ErrorNotFound from '../../../../components/ErrorNotFound';
+import StixCoreRelationship from '../../common/stix_core_relationships/StixCoreRelationship';
 
 const subscription = graphql`
   subscription RootCoursesOfActionSubscription($id: ID!) {
@@ -75,56 +77,69 @@ class RootCourseOfAction extends Component {
           query={courseOfActionQuery}
           variables={{ id: courseOfActionId }}
           render={({ props }) => {
-            if (props && props.courseOfAction) {
-              return (
-                <div>
-                  <Route
-                    exact
-                    path="/dashboard/arsenal/courses_of_action/:courseOfActionId"
-                    render={(routeProps) => (
-                      <CourseOfAction
-                        {...routeProps}
-                        courseOfAction={props.courseOfAction}
-                      />
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/arsenal/courses_of_action/:courseOfActionId/files"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.courseOfAction}
-                          PopoverComponent={<CourseOfActionPopover />}
-                        />
-                        <FileManager
+            if (props) {
+              if (props.courseOfAction) {
+                return (
+                  <Switch>
+                    <Route
+                      exact
+                      path="/dashboard/arsenal/courses_of_action/:courseOfActionId"
+                      render={(routeProps) => (
+                        <CourseOfAction
                           {...routeProps}
-                          id={courseOfActionId}
-                          connectorsImport={[]}
-                          connectorsExport={props.connectorsForExport}
-                          entity={props.courseOfAction}
+                          courseOfAction={props.courseOfAction}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                  <Route
-                    exact
-                    path="/dashboard/arsenal/courses_of_action/:courseOfActionId/history"
-                    render={(routeProps) => (
-                      <React.Fragment>
-                        <StixDomainObjectHeader
-                          stixDomainObject={props.courseOfAction}
-                          PopoverComponent={<CourseOfActionPopover />}
-                        />
-                        <StixCoreObjectHistory
-                          {...routeProps}
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/arsenal/courses_of_action/:courseOfActionId/files"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.courseOfAction}
+                            PopoverComponent={<CourseOfActionPopover />}
+                          />
+                          <FileManager
+                            {...routeProps}
+                            id={courseOfActionId}
+                            connectorsImport={[]}
+                            connectorsExport={props.connectorsForExport}
+                            entity={props.courseOfAction}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/arsenal/courses_of_action/:courseOfActionId/history"
+                      render={(routeProps) => (
+                        <React.Fragment>
+                          <StixDomainObjectHeader
+                            stixDomainObject={props.courseOfAction}
+                            PopoverComponent={<CourseOfActionPopover />}
+                          />
+                          <StixCoreObjectHistory
+                            {...routeProps}
+                            stixCoreObjectId={courseOfActionId}
+                          />
+                        </React.Fragment>
+                      )}
+                    />
+                    <Route
+                      exact
+                      path="/dashboard/arsenal/courses_of_action/:courseOfActionId/relations/:relationId"
+                      render={(routeProps) => (
+                        <StixCoreRelationship
                           entityId={courseOfActionId}
+                          {...routeProps}
                         />
-                      </React.Fragment>
-                    )}
-                  />
-                </div>
-              );
+                      )}
+                    />
+                  </Switch>
+                );
+              }
+              return <ErrorNotFound />;
             }
             return <Loader />;
           }}

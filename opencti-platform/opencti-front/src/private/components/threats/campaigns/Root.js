@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import * as PropTypes from 'prop-types';
-import { Route, Redirect, withRouter } from 'react-router-dom';
+import {
+  Route, Redirect, withRouter, Switch,
+} from 'react-router-dom';
 import graphql from 'babel-plugin-relay/macro';
 import {
   QueryRenderer,
@@ -18,6 +20,7 @@ import StixCoreObjectOrStixCoreRelationshipContainers from '../../common/contain
 import StixDomainObjectIndicators from '../../observations/indicators/StixDomainObjectIndicators';
 import StixCoreRelationship from '../../common/stix_core_relationships/StixCoreRelationship';
 import ErrorNotFound from '../../../../components/ErrorNotFound';
+import StixCoreObjectKnowledgeBar from '../../common/stix_core_objects/StixCoreObjectKnowledgeBar';
 
 const subscription = graphql`
   subscription RootCampaignSubscription($id: ID!) {
@@ -75,9 +78,27 @@ class RootCampaign extends Component {
         params: { campaignId },
       },
     } = this.props;
+    const link = `/dashboard/threats/campaigns/${campaignId}/knowledge`;
     return (
       <div>
         <TopBar me={me || null} />
+        <Route path="/dashboard/threats/campaigns/:campaignId/knowledge">
+          <StixCoreObjectKnowledgeBar
+            stixCoreObjectLink={link}
+            availableSections={[
+              'attribution',
+              'victimology',
+              'incidents',
+              'malwares',
+              'tools',
+              'attack_patterns',
+              'vulnerabilities',
+              'observables',
+              'infrastructures',
+              'sightings',
+            ]}
+          />
+        </Route>
         <QueryRenderer
           query={campaignQuery}
           variables={{ id: campaignId }}
@@ -85,7 +106,7 @@ class RootCampaign extends Component {
             if (props) {
               if (props.campaign) {
                 return (
-                  <div>
+                  <Switch>
                     <Route
                       exact
                       path="/dashboard/threats/campaigns/:campaignId"
@@ -185,12 +206,12 @@ class RootCampaign extends Component {
                           />
                           <StixCoreObjectHistory
                             {...routeProps}
-                            entityId={campaignId}
+                            stixCoreObjectId={campaignId}
                           />
                         </React.Fragment>
                       )}
                     />
-                  </div>
+                  </Switch>
                 );
               }
               return <ErrorNotFound />;

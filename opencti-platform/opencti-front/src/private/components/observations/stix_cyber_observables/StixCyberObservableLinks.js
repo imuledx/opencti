@@ -92,12 +92,11 @@ class StixCyberObservableLinksComponent extends Component {
         <StixCyberObservableRelationCreationFromEntity
           paginationOptions={paginationOptions}
           entityId={stixCyberObservableId}
-          isRelationReversed={false}
           variant="inLine"
           entityType={stixCyberObservableType}
         />
         <div className="clearfix" />
-        <List>
+        <List style={{ marginTop: -10 }}>
           {data && data.stixCyberObservableRelationships
             ? data.stixCyberObservableRelationships.edges.map(
               (stixCyberObservableRelationEdge) => {
@@ -128,9 +127,9 @@ class StixCyberObservableLinksComponent extends Component {
                               className={classes.bodyItem}
                               style={{ width: '15%' }}
                             >
-                              {
-                                stixCyberObservableRelationshipId.relationship_type
-                              }
+                              {t(
+                                `relationship_${stixCyberObservableRelationshipId.relationship_type}`,
+                              )}
                             </div>
                             <div
                               className={classes.bodyItem}

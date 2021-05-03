@@ -62,6 +62,8 @@ export const ignoredAttributes = [
   'x_opencti_score',
   'updated_at',
   'observable_value',
+  'indicators',
+  'importFiles',
 ];
 
 export const dateAttributes = [
